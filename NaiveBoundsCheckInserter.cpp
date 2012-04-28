@@ -24,9 +24,7 @@ namespace nbci {
 			Function *func = (Function*)it;
 			if(!(func->empty() || func->isDeclaration()))
 			{
-				func->viewCFG();
 				visitor->visit(func);
-				func->viewCFG();
 			}
 		}
 
