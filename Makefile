@@ -5,7 +5,7 @@ LEVEL = ../../
 
 LOADABLE_MODULE = 1
 
-LIBRARYNAME = phase1CDPass
+LIBRARYNAME = Phase2
 
 include $(LEVEL)/Makefile.common
 

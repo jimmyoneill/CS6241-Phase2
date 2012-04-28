@@ -89,7 +89,7 @@ namespace nbci {
 
 char nbci::NaiveBoundsCheckInserter::ID = 0;
 static RegisterPass<nbci::NaiveBoundsCheckInserter> X(
-	"nbcheck", 
+	"nbci", 
 	"CS6241 phase 2 naive bounds check insertion pass", 
 	false, 
 	false);
