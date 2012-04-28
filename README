@@ -1,0 +1,36 @@
+CS6241 Project Phase 1
+ABCD array bounds check implementation.
+Jeremy Duvall, Chris Grayson, Jimmy O'neill
+
+------------------------------------------
+| Getting Started                        |
+------------------------------------------
+
+Hopefully the contents of the repository lies somewhere in the LLVM build path, preferably the projects/ dir. Also, please ensure that the OPT command is in the path of the host machine that all scripts are being executed on.
+
+------------------------------------------
+| How to compile the tests               |
+------------------------------------------
+
+In the code directory, use the process.py script to process all code files into example bitcode. Run it like this:
+
+>> python process.py <directory>
+
+Directory will usually be just the current directory (.), and make sure that the OPT command is in your path. This file has been updated to work correctly with both naive bounds checking and the compiler flags required to run the ABCD conversion properly.
+
+------------------------------------------
+| How to execute the passes              |
+------------------------------------------
+
+First, type make at the root projects directory.
+
+There's a script in the root of the tree that will execute a naive bounds check insertion pass, and one for the ABCD pass too. It depends on the proper name of the dylib, which is Phase1 in the Makefile so please don't change that. To run each pass, do this:
+
+>> ./nbcheck <path to .ll file>
+>> ./abcd <path to .ll file>
+
+Assumes that the OPT command is in your path. To pretty print the nbcheck pass, simply add the -analysis switch to the call.
+
+>> ./nbcheck -analysis <path to .ll file>
+
+The ABCD pass will execute the -instnamer and -mem2reg optimizations on the bitcode file before it is handed off to a pass. This is REQUIRED, or the pass may seg-fault.

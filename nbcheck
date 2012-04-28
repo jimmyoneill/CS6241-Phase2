@@ -1,0 +1,6 @@
+#!/bin/bash
+
+#opt -load ../../Release/lib/Phase1.dylib -nbcheck $@ 2> /dev/null
+
+# For debug. Allows all messages through.
+opt -load ../../Release/lib/phase1CDPass.dylib -nbcheck $@

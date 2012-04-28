@@ -1,0 +1,4 @@
+#!/bin/bash
+
+opt -instnamer -mem2reg -load ../../Release/lib/phase1CDPass.dylib -phase1CDPass $@ > /dev/null
+
