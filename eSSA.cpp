@@ -28,7 +28,7 @@ void eSSA::SSA_to_eSSA(Module &m) {
 				errs() << "pi funcs generated from " << it1->first->getName() 
 					<< " to " << it2->first->getName() << "\n";
 			}
-			for (int i = 0; i < pis.size(); i++) {
+			for (size_t i = 0; i < pis.size(); i++) {
 				errs() << "pi assignment operand name " << pis.at(i)->operandBaseName << "\n";
 			}
 		}
@@ -67,7 +67,7 @@ void eSSA::init_var_map(Module &m) {
 	for (Module::iterator f = m.begin(); f != m.end(); f++) {
 	    for (Function::iterator b = f->begin(); b != f->end(); b++) {
 		for (BasicBlock::iterator inst = b->begin(); inst != b->end(); inst++) {
-			for (int i = 0; i < names.size(); i++) {
+			for (size_t i = 0; i < names.size(); i++) {
 				var_map[(Instruction*)inst][names.at(i)] = 0;
 			//errs() << names.at(i) << " -> " << var_map[(Instruction*)inst][names.at(i)] << "\n";
 			}		
@@ -93,7 +93,7 @@ void eSSA::add_name_to_var_map(std::string name) {
 
 void eSSA::clear_static_var_map() {
 
-	for (int i = 0; i < names.size(); i++) {
+	for (size_t i = 0; i < names.size(); i++) {
 		static_var_map[names.at(i)] = 0;
 	}	
 
@@ -161,7 +161,7 @@ void eSSA::make_pi_assignments_for_br(BranchInst *branchInst, CmpInst *cmpInst, 
 
 	if (branchInst->getNumSuccessors() < 2) errs() << "Branch without 2 successors in eSSA::make_pi_assignments_for_br\n";
 		
-	for (int i = 0; i < branchInst->getNumSuccessors(); i++) {
+	for (size_t i = 0; i < branchInst->getNumSuccessors(); i++) {
 		if (D) errs() << "successor: " << branchInst->getSuccessor(i)->getName() << "\n";
 		eSSAedge *edge = new eSSAedge();
 
@@ -171,9 +171,9 @@ void eSSA::make_pi_assignments_for_br(BranchInst *branchInst, CmpInst *cmpInst, 
 				edge->piAssignments.push_back( new piAssignment(op->get()->getName().str()) );
 			} 
 
-			if (ConstantInt *constInt = dyn_cast<ConstantInt>(&*op->get())) {
-			    //this will play a role in contraints, but not in pi assignments
-			}
+			// if (ConstantInt *constInt = dyn_cast<ConstantInt>(&*op->get())) {
+			//     //this will play a role in contraints, but not in pi assignments
+			// }
 		}
 		//add the eSSAedge instance to the edges member
 		edges[bb][branchInst->getSuccessor(i)] = edge;
@@ -182,7 +182,6 @@ void eSSA::make_pi_assignments_for_br(BranchInst *branchInst, CmpInst *cmpInst, 
 
 void eSSA::handle_check_pi_assignment(CallInst *inst) {
 
-	Function *f = inst->getCalledFunction();
 	std::string name;
 
 	//get name of first argument - the variable to be checked
@@ -213,7 +212,7 @@ void eSSA::dom_tree_preorder(DomTreeNode *curr_node) {
 		if (edges[PredBB][BB] != NULL) {
 			std::vector<piAssignment *> pis = edges[PredBB][BB]->piAssignments;
 			if (D) errs() << "from " << PredBB->getName() << " to " << BB->getName() << "\n";
-			for (int i = 0; i < pis.size(); i++) {  
+			for (size_t i = 0; i < pis.size(); i++) {  
 				if (D) errs() << "pi assignment operand name " << pis.at(i)->operandBaseName << "\n";
 				static_var_map[pis.at(i)->operandBaseName] += 1;
 				int newSub = static_var_map[pis.at(i)->operandBaseName];
@@ -294,7 +293,7 @@ void eSSA::rename_pi_assignments(DomTreeNode *curr_node) {
 			std::vector<piAssignment *> pis = edges[PredBB][BB]->piAssignments;
 			if (D) errs() << "from " << PredBB->getName() << " to " << BB->getName() << "\n";
 
-			for (int i = 0; i < pis.size(); i++) {  
+			for (size_t i = 0; i < pis.size(); i++) {  
 				std::string unmappedName = pis.at(i)->operandBaseName; 
 				if (D) errs() << "changed pi assignment operand subscript for name " << pis.at(i)->operandBaseName << "\n";
 				//pis.at(i)->operandSubscript = get_mapped_name(pis.at(i)->operandBaseName, PredBB->getTerminator()); 
@@ -336,7 +335,7 @@ void eSSA::rename_phi_assignments(DomTreeNode *curr_node) {
 	BasicBlock *b = curr_node->getBlock();
 	for (BasicBlock::iterator inst = b->begin(); inst != b->end(); inst++) {		
 		if (PHINode *pn = dyn_cast<PHINode>(inst)) {
-			for (int i = 0; i < pn->getNumIncomingValues(); ++i) {
+			for (size_t i = 0; i < pn->getNumIncomingValues(); ++i) {
 				Value *v = pn->getIncomingValue(i);
 				if(v->hasName()) {
 					BasicBlock *incomingBlock = pn->getIncomingBlock(i);
@@ -349,7 +348,7 @@ void eSSA::rename_phi_assignments(DomTreeNode *curr_node) {
 					*/
 					if (edges[incomingBlock][b]) {
 						std::vector<piAssignment *> pis = edges[incomingBlock][b]->piAssignments;
-						for (int p = 0; p < pis.size(); ++p) {
+						for (size_t p = 0; p < pis.size(); ++p) {
 							if(v->getName().str() == pis.at(p)->assignedBaseName) {
 								in_essa_edge = true;
 								new_sub = pis.at(p)->assignedSubscript;
@@ -449,12 +448,12 @@ std::vector<GraphConstruct::CGGraph*> eSSA::find_constraints(Module &m, nbci::Na
 				}
 			}	
 			//C3 - has only one variable and one int
-			else if (BinaryOperator *i = dyn_cast<BinaryOperator>(inst)) {	    	
+			else if (isa<BinaryOperator>(inst)) {	    	
 				int intCount = 0;
 				int varCount = 0;
 				for (User::op_iterator op = inst->op_begin(); op != inst->op_end(); op++) {
 					if (op->get()->hasName()) ++varCount;
-					else if (ConstantInt *constInt = dyn_cast<ConstantInt>(op->get())) ++intCount;
+					else if (isa<ConstantInt>(op->get())) ++intCount;
 				}
 				
 				if ( (intCount == 1) && (varCount == 1) ) {
@@ -470,7 +469,7 @@ std::vector<GraphConstruct::CGGraph*> eSSA::find_constraints(Module &m, nbci::Na
 					bool acceptConstraint = true;
 					std::vector<piAssignment *> pis1;
 					std::vector<piAssignment *> pis2;
-					for (int i = 0; i < branchInst->getNumSuccessors(); i++) {
+					for (size_t i = 0; i < branchInst->getNumSuccessors(); i++) {
 						BasicBlock* pred = branchInst->getParent();
 						BasicBlock* succ = branchInst->getSuccessor(i);					
 						if (edges[pred][succ]) {
@@ -543,7 +542,7 @@ void eSSA::print_var_map(DomTreeNode *curr_node) {
 
 	BasicBlock* b = curr_node->getBlock();
 	for (BasicBlock::iterator inst = b->begin(); inst != b->end(); inst++) {
-		for (int i = 0; i < names.size(); i++) {
+		for (size_t i = 0; i < names.size(); i++) {
 			errs() << b->getName() << " - " << names.at(i) << " - " << var_map[(Instruction*)inst][names.at(i)] << "\n";
 		}	
 	}		
@@ -565,7 +564,6 @@ void eSSA::output_test(Module &m) {
 				errs() << "mapped vars  ";
 				for (User::op_iterator op = inst->op_begin(); op != inst->op_end(); op++) {
 					if (op->get()->hasName()) {
-						Instruction *i = inst;
 						std::string name = op->get()->getName(); 
 			    			errs() << " - " << get_mapped_name(name, inst);
 					} 
@@ -578,7 +576,7 @@ void eSSA::output_test(Module &m) {
 
 				if (BranchInst *branchInst = dyn_cast<BranchInst>(&*inst)) {
 
-					for (int i = 0; i < branchInst->getNumSuccessors(); i++) {
+					for (size_t i = 0; i < branchInst->getNumSuccessors(); i++) {
 						BasicBlock* pred = branchInst->getParent();
 						BasicBlock* succ = branchInst->getSuccessor(i);						
 						if (edges[pred][succ]) {
@@ -587,7 +585,7 @@ void eSSA::output_test(Module &m) {
 
 							std::vector<piAssignment *> pis;
 							pis = edges[pred][succ]->piAssignments;
-							for (int i = 0; i< pis.size(); ++i) {
+							for (size_t i = 0; i< pis.size(); ++i) {
 								piAssignment *pa = pis.at(i);
 								errs() << "PI ASSIGNMENT: " << pa->getAssignedName() 
 								<< " = " << pa->getOperandName() << "\n";
