@@ -3,4 +3,4 @@
 #opt -load ../../Release/lib/Phase1.dylib -nbcheck $@ 2> /dev/null
 
 # For debug. Allows all messages through.
-opt -load ../../Release/lib/Phase2.dylib -nbcheck $@
+opt -load ../../Release/lib/Phase2.dylib -nbci $@
