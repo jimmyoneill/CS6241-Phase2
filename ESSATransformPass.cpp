@@ -2,11 +2,11 @@
 
 namespace abcd
 {
-	ESSATransformPass::ESSATransformPass() : ModulePass(ID) {};
+	ESSATransformPass::ESSATransformPass() : ModulePass(ID) {}
 
 	bool ESSATransformPass::runOnModule(Module &M)
 	{
-
+		return false;
 	}
 
 	void ESSATransformPass::getAnalysisUsage(AnalysisUsage &AU) const
@@ -23,6 +23,6 @@ namespace abcd
 char abcd::ESSATransformPass::ID = 0;
 static RegisterPass<abcd::ESSATransformPass> X(
 	"essa", 
-	"CS6241 phase 2 eSSA IR transformation pass", 
+	"CS6241 Phase2 eSSA IR transformation pass", 
 	false, 
 	false);
