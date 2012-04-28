@@ -13,9 +13,10 @@
 using namespace llvm;
 using namespace std;
 
-namespace nbci {
-  
-  struct NaiveBoundsCheckInserter : public ModulePass {
+namespace nbci 
+{  
+  struct NaiveBoundsCheckInserter : public ModulePass 
+  {
     private:
       BoundsCheckVisitor *visitor;
       

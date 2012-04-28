@@ -512,7 +512,6 @@ std::vector<GraphConstruct::CGGraph*> eSSA::find_constraints(Module &m, nbci::Na
     	    } // end Function::iterator 
 
 		cggraph->constructGraph();	
-		errs() << cggraph->getDescription(true);
 
 		toReturn.push_back(cggraph);
 

@@ -9,9 +9,10 @@
 #include "llvm/Instruction.h"
 #include "llvm/Instructions.h"
 #include "BoundsCheckVisitor.h"
-//#include "eSSA.h"
+
 class piAssignment;
 class eSSA;
+
 using namespace llvm;
 namespace GraphConstruct {
 
@@ -27,7 +28,6 @@ namespace GraphConstruct {
 	class CGLoop;
 	class CGTraversal;
 
-	const std::string padString = "---------------------------------------------------\n";
 	const bool D = true;
 
 	class CGConstraint {
@@ -48,28 +48,19 @@ namespace GraphConstruct {
 			std::vector<piAssignment*> piAssignments2; //hackish
 			BasicBlock* containerBlock;
 			ConType type;
-			std::string getDescription(bool doPadding);
-			CGConstraint(ConType inputType, Instruction* inputInstr, int inputLength);
 			CGConstraint(ConType inputType, Instruction* inputInstr);
 			CGConstraint(ConType inputType, Instruction* inputInstr, std::vector<piAssignment*> inputPi);
-			CGConstraint(ConType inputType, Instruction* inputInstr, std::vector<piAssignment*> inputPi1, std::vector<piAssignment*> inputPi2); 
+			CGConstraint(ConType inputType, Instruction* inputInstr, std::vector<piAssignment*> inputPi1, std::vector<piAssignment*> inputPi2);
+		
 	};
 	
 	class CGNode {
 		public:
 			std::vector<CGEdge*> fromEdges;
 			std::vector<CGEdge*> toEdges;
-			CGNodeContent* content;
-			std::string getDescription(bool doPadding);
-			CGNode(CGNodeContent* inputConst);
+			CGNode();
 			void connectTo(CGNode* toConnect, int edgeValue);
 			void connectFrom(CGNode* fromConnect, int edgeValue);
-	};
-	
-	class CGNodeContent {
-		public:
-			int content;
-			CGNodeContent(int inputContent);
 	};
 	
 	class CGEdge {
@@ -77,7 +68,6 @@ namespace GraphConstruct {
 			CGNode* from;
 			CGNode* to;
 			int cost;
-			std::string getDescription(bool doPadding);
 			CGEdge(CGNode* fromNode, CGNode* toNode, int inputCost);
 	};
 
@@ -86,12 +76,12 @@ namespace GraphConstruct {
 			eSSA* owner;
 			CGGraph(eSSA* owner, std::string inputFuncName);
 			std::vector<CGEdge*> edges;
+			std::vector<std::string> nodeNames;
 			std::string funcName;
 			std::vector<CGConstraint*> constraints;
 			std::vector<int> arrayLengths;
 			std::vector<CGTraversal*> traversals;
 			std::map<std::string, CGNode*> nodes;
-			std::string getDescription(bool doPadding);
 			std::string getNameFromValue(Value* inputValue, Instruction* inst);
 			CGNode* getNode(std::string nodeName);
 			void addConstraint(Instruction* inputInstr);
@@ -99,21 +89,13 @@ namespace GraphConstruct {
 			void addConstraint(Instruction* inputInstr, std::vector<piAssignment*> inputPi1, std::vector<piAssignment*> inputPi2);
 			void constructGraph(std::vector<CGConstraint*> inputConstraints);
 			void constructGraph();
+			void addArrayLengths(patterns::AccessMap inputMap);
 			void solve(std::vector<CallInst*> arrayChecks);
-			static void describeInstruction(Instruction* inputInstr);
 			bool hasNode(std::string inputName);
 			bool doTraverse(std::string firstName, std::string secondName);
 			void continueTraversal(CGTraversal* inputTraversal, CGNode* targetNode);
-			void addArrayLengths(patterns::AccessMap inputMap);
 			void handleLoop(CGTraversal* inputTraversal);
 			int getLoopCost(std::vector<CGNode*> inputNodes);
-	};
-
-	class CGLoop {
-		public:
-			std::vector<CGNode*> nodes;
-			int cost;
-			CGLoop(std::vector<CGNode*> inputNode, int inputCost);
 	};
 
 	class CGTraversal {
@@ -125,11 +107,7 @@ namespace GraphConstruct {
 			bool foundTarget;
 			bool hasPositiveLoop;
 			std::vector<CGNode*> noTraverse;
-			std::string getDescription();
 	};
-
-
-	
 
 }
 

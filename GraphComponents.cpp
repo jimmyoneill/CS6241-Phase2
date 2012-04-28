@@ -1,22 +1,16 @@
 
 #include "GraphComponents.h"
-//#include "piAssignment.h"
 #include "eSSA.h"
 
 using namespace GraphConstruct;
 using namespace llvm;
 
 	/**
-	* CGConstraint definitions
+	* Class CGConstraint
+	*
+	* This class is used for containing information about the constraints obtained from the control flow graph
+	* for a given function.
 	*/
-
-	CGConstraint::CGConstraint(ConType inputType, Instruction* inputInstr, int inputLength) {
-
-		arrayLength = inputLength;
-		type = inputType;
-		programPoint = inputInstr;
-
-	}
 
 	CGConstraint::CGConstraint(ConType inputType, Instruction* inputInstr) {
 	
@@ -42,36 +36,15 @@ using namespace llvm;
 	
 	}
 
-	std::string CGConstraint::getDescription(bool doPadding) {
-
-		std::stringstream toReturn;
-
-		if (doPadding) {
-			toReturn << padString;
-		}
-		
-		toReturn << "CGConstraint with address of: " << this << "\n";
-		toReturn << "CGConstraint type is " << type << "\n";
-		toReturn << "Containing basic block is " << containerBlock << "\n";
-		toReturn << "Relevant instruction is " << programPoint << "\n\n";
-
-		if (doPadding) {
-			toReturn << padString;
-		}
-		
-		toReturn << "\n";
-
-		return toReturn.str();
-		
-	}
-
 	/**
-	* CGNode definitions
+	* Class CGNode
+	*
+	* This class is used to represent the nodes within the constraint graph used to solve the ABCD implementation.
+	* These nodes are responsible for keeping track of relations between themselves and their neighbors via vectors
+	* of CGEdges
 	*/
 
-	CGNode::CGNode(CGNodeContent* inputConst) {
-		
-		content = inputConst;
+	CGNode::CGNode() {
 
 	}
 
@@ -91,62 +64,12 @@ using namespace llvm;
 
 	}
 
-	std::string CGNode::getDescription(bool doPadding) {
-
-		std::stringstream toReturn;
-
-		if (doPadding) {
-			toReturn << padString;
-		}
-		
-		toReturn << "CGNode with address of: " << this << "\n";
-		toReturn << "Constraint contained is at address: " << content << "\n\n";
-		
-		toReturn << "There are " << fromEdges.size() << " incoming edges pointing to this CGNode\n";
-		
-		std::vector<CGEdge*>::iterator itr;
-		int edgeCounter = 0;
-		
-		for (itr = fromEdges.begin(); itr != fromEdges.end(); ++itr) {
-			toReturn << "Edge # " << edgeCounter++ << " is at address " << *itr << " and has cost of " << (*itr)->cost << "\n";
-		}
-		
-		toReturn << "\n";
-		edgeCounter = 0;
-		
-		toReturn << "There are " << toEdges.size() << " outgoing edges leading from this CGNode\n";
-		
-		for (itr = toEdges.begin(); itr != toEdges.end(); ++itr) {
-			toReturn << "Edge # " << edgeCounter++ << " is at address " << *itr << " and has cost of " << (*itr)->cost << "\n";
-			toReturn << "goes to " << (*itr)->to << "\n";
-
-		}
-		
-		toReturn << "\n";
-		
-
-		if (doPadding) {
-			toReturn << padString;
-		}
-		
-		toReturn << "\n";
-
-		return toReturn.str();
-
-	}
-	
 	/**
-	* CGNodeContent definitions
-	*/
-	
-	CGNodeContent::CGNodeContent(int inputContent) {
-	
-		content = inputContent;
-
-	}
-
-	/**
-	* CGEdge definitions
+	* Class CGEdge
+	*
+	* This class is used to represent the edges connecting nodes in the constraint graph used to solve the ABCD
+	* implementation. Aside from the nodes which the edge connects, this class also holds the traversal cost value
+	* for weighted edges.
 	*/
 
 	CGEdge::CGEdge(CGNode* fromNode, CGNode* toNode, int inputCost) {
@@ -157,30 +80,11 @@ using namespace llvm;
 
 	}
 
-	std::string CGEdge::getDescription(bool doPadding) {
-
-		std::stringstream toReturn;
-
-		if (doPadding) {
-			toReturn << padString;
-		}
-		
-		toReturn << "CGEdge with address of: " << this << "\n";
-		toReturn << "Edge goes from node " << from << " to node " << to << "\n";
-		toReturn << "Edge has cost of " << cost << "\n";
-
-		if (doPadding) {
-			toReturn << padString;
-		}
-		
-		toReturn << "\n";
-
-		return toReturn.str();
-
-	}
-
 	/**
-	* CGGraph definitions
+	* Class CGGraph
+	*
+	* This class is used to construct the ABCD constraint graph from a vector of CGConstraints. In addition to graph
+	* construction, this class also houses the methods for graph traversal and constraint system solving.
 	* */
 
 	CGGraph::CGGraph(eSSA* owner, std::string inputFuncName) {
@@ -188,9 +92,15 @@ using namespace llvm;
 		funcName = inputFuncName;
 	}
 	
+	/**
+	* Adds a constraint to the vector of constraints currently held by the graph based on the passed in Instruction.
+	* This method is only for constraints C1, C2, C3, and CONTROL_FLOW as constraints C4 and C5 require additional
+	* information for proper implementation
+	*
+	* @param inputInstr - The instruction to construct the appropriate constraint from
+	* */
+	
 	void CGGraph::addConstraint(Instruction* inputInstr) {
-
-		if (D) errs() << "addConstraint - " << *inputInstr << "\n";
 		
 		//CONTROL FLOW
 		if (isa<PHINode>(inputInstr)) {
@@ -204,60 +114,90 @@ using namespace llvm;
 					std::vector<int>::iterator it;
 					for (it = arrayLengths.begin(); it != arrayLengths.end(); ++it) {
 						if ((*it) == intValue) {
-							if (D) errs() << "pushing back C1 \n";
 							constraints.push_back(new CGConstraint(CGConstraint::C1, inputInstr));
 							break;
 						}
 					}
-					if (D) errs() << "pushing back C2 from store with constant int\n";
 					constraints.push_back(new CGConstraint(CGConstraint::C2, inputInstr));
 				}
 			}
 			else {
-				if (D) errs() << "pushing back C2 from store with variable\n";
 				constraints.push_back(new CGConstraint(CGConstraint::C2, inputInstr));  //storeInst->getValueOperand() may be a variable
 			}
 		}
 		else if (LoadInst* loadInst = dyn_cast<LoadInst>(inputInstr)) {
-				if (D) errs() << "pushing back C2 from load\n";
-				constraints.push_back(new CGConstraint(CGConstraint::C2, inputInstr));
+			constraints.push_back(new CGConstraint(CGConstraint::C2, inputInstr));
 		}
 		else if (CastInst* castInst = dyn_cast<CastInst>(inputInstr)) {
-			if (D) errs() << "pushing back C2 from cast\n";
 			constraints.push_back(new CGConstraint(CGConstraint::C2, inputInstr));
 		}
 		//C3		
 		else {
-			if (D) errs() << "pushing back C3\n";
 			constraints.push_back(new CGConstraint(CGConstraint::C3, inputInstr));
 		}
 	
 	}
 	
+	/**
+	* Adds a constraint to the vector of constraints currently held by the graph based on the passed in Instruction
+	* as well as the passed in vectors of piAssignment*s. This method is for constraint C4 only.
+	* 
+	* @param inputInstr - The instruction to construct the appropriate constraint from
+	* @param inputPi1 - The first vector of piAssignment* to construct the appropriate constraint from
+	* @param inputPi2 - The second vector of piAssignment* to construct the appropriate constraint from
+	* */
+	
 	void CGGraph::addConstraint(Instruction* inputInstr, std::vector<piAssignment*> inputPi1, std::vector<piAssignment*> inputPi2) {
 		//This is C4 - there are two vectors of piAssignments, one for each eSSA branch.
 		//Each vector will be sizes one or two
-
-		if (D) errs() << "addConstraint - " << *inputInstr << "\n";
-		if (D) errs() << "pushing back C4\n";
+		
 		constraints.push_back(new CGConstraint(CGConstraint::C4, inputInstr, inputPi1, inputPi2));	
 	
 	}
+	
+	/**
+	* Adds a constraint to the vector of constraints currently held by the graph based on the passed in Instruction
+	* as well as the passed in piAssignment*. This method is for constraint C5 only.
+	* 
+	* @param inputInstr - The instruction to construct the appropriate constraint from
+	* @param inputPi - The pi assignment relating to the passed in instruction
+	* */
 
 	void CGGraph::addConstraint(Instruction* inputInstr, piAssignment* inputPi) {
 	
 		//This is C5 - there is one and only one PA in any case of C5
-		if (D) errs() << "addConstraint - " << *inputInstr << "\n";
 
 		std::vector<piAssignment*> pis;
 		pis.push_back(inputPi);
-		if (D) errs() << "pushing back C5\n";
-		constraints.push_back(new CGConstraint(CGConstraint::C5, inputInstr, pis));	
+		constraints.push_back(new CGConstraint(CGConstraint::C5, inputInstr, pis));
 	}
 	
-	void CGGraph::solve(std::vector<CallInst*> boundsChecks) {
+	/**
+	* Adds all of the array lengths for a given AccessMap to an internally held vector of integers. This array
+	* is subsequently used to check upon constraint construction whether or not a given constraint is a C1 as well
+	* as a C2
+	*
+	* @param inputMap - The AccessMap containing all of the array lengths for the relevant function
+	* */
+	
+	void CGGraph::addArrayLengths(patterns::AccessMap inputMap) {
 
-		errs() << "CGGraph::solve\n";
+		std::map<CallInst*, ArrayAccess*>::iterator mapIt;
+
+		for (mapIt = inputMap.begin(); mapIt != inputMap.end(); ++mapIt) {
+				arrayLengths.push_back(mapIt->second->getLength());
+		}
+
+	}
+	
+	/**
+	* Traverses the constructed constraint graph for each array bounds check that is passed in to detect whether
+	* or not the given bounds check instruction is redundant.
+	*
+	* @param boundsChecks - A vector of call instructions that contains all calls to the bounds within the current function
+	* */
+	
+	void CGGraph::solve(std::vector<CallInst*> boundsChecks) {
 
 		std::vector<CallInst*>::iterator callIt;
 		std::string varOne;
@@ -279,8 +219,6 @@ using namespace llvm;
 		    	
 				if ( (*callIt)->getParent()->getParent()->getName() == this->funcName) {
 					
-					errs() << "Got in!!!\n";
-
 					Value *v0 = (*callIt)->getArgOperand(0);
 					Value *v1 = (*callIt)->getArgOperand(1);
 					if (ConstantInt *c0 = dyn_cast<ConstantInt>(v0)) {
@@ -289,9 +227,6 @@ using namespace llvm;
 							if ((c0->getSExtValue() >= 0) && (c0->getSExtValue() < c1->getSExtValue())) {
 								//trivial constant case
 								totalRemoved++;
-								errs() << "Array bounds check is TRIVIALLY redundant, instruction should be removed!\n";
-								errs() << **callIt << "\n";
-								errs() << "c0 = " << c0->getSExtValue() << "c1 = " << c1->getSExtValue() << "\n";
 								toRemove.push_back(*callIt);
 								
 							}
@@ -300,38 +235,25 @@ using namespace llvm;
 					else {
 					
 						varOne = getNameFromValue((*callIt)->getArgOperand(1), (*callIt)); //length of array
-						//varTwo = owner->check_pi_assignments[*callIt]->getAssignedName();  //indexing variable
 						varTwo = getNameFromValue((*callIt)->getArgOperand(0), (*callIt)); //indexing variable
-
-				
-						errs() << "Func name is " << funcName << "\n";
-						errs() << "First one is " << varOne << "\nSecond one is " << varTwo << "\n";
-						if (hasNode(varOne)) { errs() << "Has first node!\n";}
-						if (hasNode(varTwo)) { errs() << "Has second node!\n";}
 
 						if (hasNode(varOne) && hasNode(varTwo)) {
 							rCheck = doTraverse(varOne, varTwo);
 							totalChecked++;
 							if (rCheck) {
 								totalRemoved++;
-								//errs() << "Array bounds check is redundant, instruction should be removed!\n";
 								toRemove.push_back(*callIt);
-							} else {
-								//errs() << "Array bounds check is NOT redundant! Instruction should not be removed...\n";
 							}
 
 						}
 					}
 				}
 			}
-			//}
-			//}
 		}
 
 		// Remove them outside the traversal loop so you don't screw the iterator.
 		for(size_t i = 0; i < toRemove.size(); i++)
 		{
-
 			CallInst *deadCall = toRemove[i];
 			deadCall->eraseFromParent();
 			owner->call_insts_removed.push_back(deadCall);
@@ -341,13 +263,20 @@ using namespace llvm;
 		errs() << "Total number of checks removed for function: " << totalRemoved << "\n";
 
 	}
+	
+	/**
+	* Traverses the graph between two nodes as represented by the input parameters to detect if the
+	* traversal cost is beneath the threshold of 0
+	*
+	* @param firstName - String representation of the node from which to start the traversal
+	* @param secondName - String representation of the node which the traversal is attempting to reach
+	* @return True if traversal succeeds and cost is < 0, false if otherwise
+	* */
 
 	bool CGGraph::doTraverse(std::string firstName, std::string secondName) {
 
 		CGNode* firstNode = getNode(firstName);
 		CGNode* secondNode = getNode(secondName);
-		//CGNode* firstNode = getNode("0");
-		//CGNode* secondNode = getNode("tmp70");
 
 		CGTraversal* firstTraverse = new CGTraversal(firstNode);
 
@@ -363,7 +292,6 @@ using namespace llvm;
 			if ((*travIt)->hasPositiveLoop) {
 				return false;
 			} else if ((*travIt)->cost > -1) {
-				errs() << "cost = " << (*travIt)->cost << "\n";
 				return false;
 			}
 		}
@@ -371,6 +299,15 @@ using namespace llvm;
 		return true;
 
 	}
+	
+	/**
+	* Recursive function that continue a traversal path using vanilla depth-first search in an attempt
+	* to reach the passed in targetNode. Upon successfully reaching the target node, the traversal is
+	* placed in CGGraph::traversals to be checked against afterwards for instruction removal.
+	* 
+	* @param inputTraversal - The CGTraversal object that the DFS should continue with
+	* @param targetNode - The CGNode that the traversal is trying to reach
+	* */
 
 	void CGGraph::continueTraversal(CGTraversal* inputTraversal, CGNode* targetNode) {
 
@@ -404,6 +341,18 @@ using namespace llvm;
 		}
 
 	}
+	
+	/**
+	* Checks for loops within the input CGTraversal. However, loops are only checked for against
+	* all of the potential next hops in the depth first search. If a loop is found, the edge
+	* in the traversal that upon traversing would cause a loop is added to a blacklist vector
+	* so that traversal does not happen. Additionally, the loop's cost is checked for as well. If
+	* The loop's cost on a single traversal is found to be positive, then a flag is flown within the
+	* CGTraversal object that states that it contains a positive loop (ie: if this traversal makes it
+	* to the target node, then the bounds check is not redundant)
+	*
+	* @param inputTraversal - The CGTraversal to check for loops against
+	* */
 
 	void CGGraph::handleLoop(CGTraversal* inputTraversal) {
 
@@ -412,7 +361,7 @@ using namespace llvm;
 
 		for (edgeIt = inputTraversal->nodes.back()->toEdges.begin(); edgeIt != inputTraversal->nodes.back()->toEdges.end(); ++edgeIt) {
 			for (nodeIt = inputTraversal->nodes.begin(); nodeIt != inputTraversal->nodes.end(); ++nodeIt) {
-				if ((*edgeIt)->to == (*nodeIt)) { //ZOMG loop found
+				if ((*edgeIt)->to == (*nodeIt)) { 
 					std::vector<CGNode*> subLoop;
 					copy(nodeIt, inputTraversal->nodes.end(), back_inserter(subLoop));
 					subLoop.push_back((*edgeIt)->to);
@@ -423,9 +372,15 @@ using namespace llvm;
 				}
 			}
 		}
-
 		
 	}
+	
+	/**
+	* Gets the cost of a given loop
+	*
+	* @param inputNodes - A vector of the nodes that a loop contains. The first and last elements should be the same
+	* @return The cost of a single traversal across the loop
+	* */
 
 	int CGGraph::getLoopCost(std::vector<CGNode*> inputNodes) {
 
@@ -434,7 +389,6 @@ using namespace llvm;
 		int loopCost = 0;
 
 		if (inputNodes.size() <= 1) {
-			errs() << "Hey now, you shouldn't be passing vectors of length 1 to getLoopCost!\n";
 			return 0; //THIS SHOULD NEVER BE HIT!
 		}
 
@@ -442,6 +396,7 @@ using namespace llvm;
 			for (edgeIt = (*nodeIt)->toEdges.begin(); edgeIt != (*nodeIt)->toEdges.end(); ++edgeIt) {
 				if ((*edgeIt)->to == (*nodeIt)) {
 					loopCost += (*edgeIt)->cost;
+					break;
 				}
 			}
 		}
@@ -449,6 +404,15 @@ using namespace llvm;
 		return loopCost;
 
 	}
+	
+	/**
+	* Returns a CGNode pointer corresponding to the passed in string. If the CGNode does not already exist
+	* in the vector of nodes contained by the CGGraph, then the node is created and added to the vector
+	* before being returned.
+	*
+	* @param nodeName - The name of the node you want to retrieve
+	* @return CGNode* corresponding to the passed in string
+	* */
 
 	CGNode* CGGraph::getNode(std::string nodeName) {
 
@@ -460,16 +424,20 @@ using namespace llvm;
 			}
 		}
 
-		CGNodeContent* newContent = new CGNodeContent(0); //TODO add value if needed
-		CGNode* newNode = new CGNode(newContent);
+		CGNode* newNode = new CGNode();
+		nodeNames.push_back(nodeName);
 		nodes.insert(make_pair(nodeName, newNode));
 		return newNode;
 
 	}
+	
+	/**
+	* Constructs the constraint graph from the vector of CGConstraints contained by
+	* the CGGraph. This is where the majority of the heavy lifting for the CGGraph
+	* class is.
+	* */
 
 	void CGGraph::constructGraph() {
-
-		errs() << "CGGraph::constructGraph() \n";
 
 		std::vector<CGConstraint*>::iterator it;
 		std::string nodeName;
@@ -483,45 +451,21 @@ using namespace llvm;
 		for (it = constraints.begin(); it != constraints.end(); ++it) {
 
 			curConstraint = *it;
-			if (D) errs() << "\n";
-			if (D) errs() << "Constraint at PP: " << *(curConstraint->programPoint) << "\n";
 			Instruction* PP = curConstraint->programPoint;
 
 			switch(curConstraint->type) {
 				case CGConstraint::C1:
 				{
-					//Done and ready to test
-					if (D) errs() << "CGConstraint::C1 \n";
 
 					firstNode = getNode(getNameFromValue(curConstraint->programPoint->getOperand(0), PP));
 					secondNode = getNode(getNameFromValue(curConstraint->programPoint->getOperand(1), PP));
 
 					firstNode->connectTo(secondNode, 0);
-
-					/*
-					std::stringstream ss;
-					ss << curConstraint->arrayLength;
-					firstNode = getNode(ss.str());
-					secondNode = getNode(
-					firstNode = getNode(curConstraint->arrayLength);
-
-					for (lengthIt = arrayLengths.begin(); lengthIt != arrayLengths.end(); ++lengthIt) {
-						if ((*lengthIt) == curConstraint->arrayLength)
-						if (lengthIt->second == curConstraint->arrayLength) {
-							std::stringstream ss;
-							ss << curConstraint->arrayLength;
-							firstNode = getNode(ss.str());
-							//firstNode = getNode(lengthIt->first); //Array name
-							secondNode = getNode(getNameFromValue(curConstraint->programPoint->getOperand(1), PP));
-							firstNode->connectTo(secondNode, 0);
-						} 
-					}
-					*/
+					
 					break;
 				}
 				case CGConstraint::C2:
 				{
-					if (D) errs() << "CGConstraint::C2 \n";
 					if (StoreInst* storeInst = dyn_cast<StoreInst>(PP)) {
 						/*
 						operand(0) = constant int or variable of int type
@@ -554,16 +498,13 @@ using namespace llvm;
 				}
 				case CGConstraint::C3:
 				{
-					//Done and ready to test
-					if (D) errs() << "CGConstraint::C3 \n";
-
+				
 					secondNode = getNode(getNameFromValue(PP, PP));
 					if ((cInt = dyn_cast<ConstantInt>(curConstraint->programPoint->getOperand(0)))) {
 						firstNode = getNode(getNameFromValue(curConstraint->programPoint->getOperand(1), PP));
 					} else if ((cInt = dyn_cast<ConstantInt>(curConstraint->programPoint->getOperand(1)))) {
 						firstNode = getNode(getNameFromValue(curConstraint->programPoint->getOperand(0), PP));
 					} else {
-						errs() << "Could not cast to constant int within graph construction method\n";
 						return;
 					}
 					curValue = cInt->getSExtValue();
@@ -572,8 +513,6 @@ using namespace llvm;
 				}
 				case CGConstraint::C4:
 				{
-				
-					if (D) errs() << "CGConstraint::C4 \n";
 
 					CmpInst* cmpInst;
 					BranchInst* branchInst;
@@ -586,7 +525,6 @@ using namespace llvm;
 						errs() << "ERROR: CmpInst not found for C4 in CGGraph::constructGraph() \n";
 						return;
 					}
-					if (D) errs() << "cmpInst: " << *cmpInst << "\n";
 
 					int size1, size2;
 					size1 = curConstraint->piAssignments.size();
@@ -606,8 +544,6 @@ using namespace llvm;
 						errs() << "ERROR: piAssignments.size() != 1 or 2 for C4 in CGGraph::constructGraph()\n"; 
 						return;
 					}
-					if (D) errs() << "number of piAssignments: " << size1 << "\n";
-					if (D) errs() << "number of piAssignments2: " << size2 << "\n";
 						
 					//this takes care of the first two constraints for both cases (size = 1 or size = 2)
 					//first branch
@@ -698,14 +634,13 @@ using namespace llvm;
 							firstNodeBr2->connectTo(secondNodeBr2, -1); //vk -> wt -1						
 							break;
 						default:
-							errs() << "Construction method fell through in C4. Predicate was " << cmpInst->getPredicate() << "\n";
+							break;
 					}
 
 					break;
 				}
 				case CGConstraint::C5:
 				{
-					if (D) errs() << "CGConstraint::C5 \n";
 					//operand 1 = array length
 					firstNode = getNode(getNameFromValue(PP->getOperand(1), PP));
 					secondNode = getNode(curConstraint->piAssignments[0]->getAssignedName());
@@ -715,7 +650,6 @@ using namespace llvm;
 				case CGConstraint::CONTROL_FLOW:
 				{
 					//Done and ready to test
-					if (D) errs() << "CGConstraint::CONTROL_FLOW \n";
 
 					firstNode = getNode(getNameFromValue(curConstraint->programPoint->getOperand(0), PP));
 					secondNode = getNode(getNameFromValue(curConstraint->programPoint, PP));
@@ -727,11 +661,17 @@ using namespace llvm;
 			} //end switch
 		} //end for	
 	} //end constructGraph()
+	
+	/**
+	* Retrieves a string corresponding to the passed in value and instruction. The instruction
+	* is used to access the map of Instructions -> value names as created in the renaming phase
+	*
+	* @param inputValue - The value for which you want to retrieve the name for
+	* @param inst - The instruction that contains the value
+	* @return The string corresponding to the mapped value's name
+	* */
 
 	std::string CGGraph::getNameFromValue(Value* inputValue, Instruction* inst) {
-
-		if (D) errs() << "getNameFromValue\n";
-		if (D) errs() << "original name = " << inputValue->getName().str() << "\n";
 
 		std::string toCompare = inputValue->getName().str();
 
@@ -739,118 +679,46 @@ using namespace llvm;
 			if (ConstantInt* cInt = dyn_cast<ConstantInt>(inputValue)) {
 				std::stringstream sStream;
 				sStream << cInt->getSExtValue();
-				if (D) errs() << "name given to int = " << sStream.str() << "\n";
 				return sStream.str();
 			} else {
-				errs() << "getNameFromValue received something that wasn't a constant int: " << *inputValue;
 				return "nullNode";
 			}
 		} else {
 
 			std::string newName = owner->get_mapped_name(toCompare, inst); 
-			if (D) errs() << "mapped name = " << newName << "\n";
 			return newName;
 		}
 
 	}
 	
-	void CGGraph::describeInstruction(Instruction* inputInstr) {
-
-		errs() << "----------------------------------------------------------\n";
-		errs() << "Instruction is at address " << inputInstr << "\n";
-		errs() << "Instruction has name of " << inputInstr->getName() << "\n";
-		errs() << "Instruction is of type " << inputInstr->getOpcodeName() << "\n";
-		errs() << "Instruction debug dump: ";
-		inputInstr->dump();
-		errs() << "\n";
-
-		uint index;
-		uint numOperands = inputInstr->getNumOperands();
-
-		errs() << "# of operands in instruction: " << numOperands << "\n";		
-
-		Value* curOperand;
-
-		for (index = 0; index < inputInstr->getNumOperands(); index++) {
-			errs() << "\n";
-			curOperand = inputInstr->getOperand(index);
-			errs() << "Information for operand # " << index << "\n";
-			errs() << "Operator debug dump: ";
-			curOperand->dump();
-			errs() << "Operand name: " << curOperand->getName() << "\n";
-			errs() << "Operand type: " << curOperand->getType()->getTypeID() << " (";
-			curOperand->getType()->dump();
-			errs() << ")\n";
-		}
-		
-		errs() << "\n";
-
-	}
-
-	std::string CGGraph::getDescription(bool doPadding) {
-
-		std::stringstream toReturn;
-
-		if (doPadding) {
-				toReturn << padString;
-		}
-
-		toReturn << "Information for graph " << this << "\n";
-		toReturn << "Relevant function name is " << funcName << "\n";
-		toReturn << "Total # of edges " << edges.size() << "\n";
-		toReturn << "Total # of nodes " << nodes.size() << "\n";
-
-		std::map<std::string, CGNode*>::iterator nodeIt;
-		int loopNum = 0;
-		
-		for (nodeIt = nodes.begin(); nodeIt != nodes.end(); ++nodeIt) {
-			toReturn << "Information for node #" << loopNum++ << "\n";
-			toReturn << "Node name is " << nodeIt->first << "\n";
-			toReturn << "Node information is as follows:\n";
-			toReturn << nodeIt->second->getDescription(doPadding) << "\n";
-		}
-
-		if (doPadding) {
-			toReturn << padString;
-		}
-
-		return toReturn.str();
-
-	}
+	/**
+	* Checks to see whether or not the CGGraph has a node corresponding to the passed
+	* in name.
+	*
+	* @param inputName - The string representation corresponding to the node to check for
+	* @return True if CGGraph has a node corresponding to the string, false otherwise
+	* */
 
 	bool CGGraph::hasNode(std::string inputName) {
-
-		std::map<std::string, CGNode*>::iterator mapIt;
-
-		for (mapIt = nodes.begin(); mapIt != nodes.end(); ++mapIt) {
-
-			if (mapIt->first.compare(inputName) == 0) {
+		
+		std::vector<std::string>::iterator sIt;
+		
+		for (sIt = nodeNames.begin(); sIt != nodeNames.end(); ++sIt) {
+			if (sIt->compare(inputName) == 0) {
 				return true;
 			}
-
 		}
 
 		return false;
 
 	}
 
-	void CGGraph::addArrayLengths(patterns::AccessMap inputMap) {
-
-		std::map<CallInst*, ArrayAccess*>::iterator mapIt;
-
-		for (mapIt = inputMap.begin(); mapIt != inputMap.end(); ++mapIt) {
-			//if (*mapIt->
-			arrayLengths.push_back(mapIt->second->getLength());
-		}
-
-	}
-
-	CGLoop::CGLoop(std::vector<CGNode*> inputNodes, int inputCost) {
-
-		nodes = inputNodes;
-		cost = inputCost;
-
-	}
+	/**
+	* Class CGTraversal
+	*
+	* This class is used as a helper class to keep track of traversals while
+	* solving the constraint system.
+	*/
 
 	CGTraversal::CGTraversal(CGNode* startNode) {
 		nodes.push_back(startNode);
@@ -865,22 +733,5 @@ using namespace llvm;
 		foundTarget = false;
 		hasPositiveLoop = inputHasLoop;
 		noTraverse = noTraverseNodes;
-	}
-
-	std::string CGTraversal::getDescription() {
-
-		std::stringstream ss;
-		std::vector<CGNode*>::iterator nodeIt;
-		int nodeCount = 0;
-
-		ss << "Traversal at address " << this << "\n";
-		ss << "Traversal has a total of " << nodes.size() << " nodes\n";
-		for (nodeIt = nodes.begin(); nodeIt != nodes.end(); ++nodeIt) {
-			ss << "Node #" << nodeCount++ << " is at address " << (*nodeIt) << "\n";
-		}
-		ss << "Traversal has cost of " << cost << "\n";
-
-		return ss.str();
-
 	}
 

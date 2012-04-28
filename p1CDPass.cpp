@@ -20,77 +20,49 @@ using namespace nbci;
 
 namespace {
 
-struct p1CDPass : public ModulePass {
+	struct p1CDPass : public ModulePass {
 
-    static char ID;
- 
-    p1CDPass() : ModulePass(ID) {
+		static char ID;
+	 
+		p1CDPass() : ModulePass(ID) {
 
-    }
-
-    void getAnalysisUsage(AnalysisUsage &AU) const {
-		//AU.setPreservesCFG();
-		AU.addRequired<DominatorTree>();
-		AU.addRequired<NaiveBoundsCheckInserter>();
-    }
-	
-	void graphTest(Module *m) {
-		
-		//Get a basic block from module
-		Module::iterator mi = m->begin(); //Function
-		Function::iterator fi = mi->begin(); //Basic block
-		fi++;
-		BasicBlock::iterator bi = fi->begin(); //Instruction
-		
-	}
-
-    virtual bool runOnModule(Module &m) {
-
-	//errs() << m;
-
-	NaiveBoundsCheckInserter &nbci = getAnalysis<NaiveBoundsCheckInserter>();
-	std::string name = nbci.getCheckFuncName(); 
-	errs() << "func name is " << name << "\n";
-	
-	eSSA *essa = new eSSA(m, nbci.getCheckFuncName());
-	bool D = essa->D;
-	graphTest(&m);
-
-	for (Module::iterator f = m.begin(); f != m.end(); f++) {
-		//rename variables in eSSA
-		if (!(f->empty())) {
-			if (D) errs () << "\nrenaming in " << f->getName() << "\n";
-			essa->rename(getAnalysis<DominatorTree>(*f));											       				 //if (D) essa->print_var_map(getAnalysis<DominatorTree>(*f).getRootNode());
-			//if (D) errs() << "\n";
 		}
 
- 	}
+		void getAnalysisUsage(AnalysisUsage &AU) const {
+			AU.addRequired<DominatorTree>();
+			AU.addRequired<NaiveBoundsCheckInserter>();
+		}
 
-	errs() << "find constraints \n";
-	std::vector<GraphConstruct::CGGraph*> graphs = essa->find_constraints(m, nbci);
-	//essa->output_test(m);
-        std::vector<GraphConstruct::CGGraph*>::iterator graphIt;
-	GraphConstruct::CGGraph* graph;
+		virtual bool runOnModule(Module &m) {
 
-	for (graphIt = graphs.begin(); graphIt != graphs.end(); ++graphIt) {
+			NaiveBoundsCheckInserter &nbci = getAnalysis<NaiveBoundsCheckInserter>();
+			eSSA *essa = new eSSA(m, nbci.getCheckFuncName());
 
-		errs() << "In graphIt loop\n";
+			for (Module::iterator f = m.begin(); f != m.end(); f++) {
+				//rename variables in eSSA
+				if (!(f->empty())) {
+					essa->rename(getAnalysis<DominatorTree>(*f));
+				}
 
-		graph = *graphIt;
+			}
 
-		(*graphIt)->solve(nbci.getBoundsCheckVisitor()->getAllCheckCalls());
+			std::vector<GraphConstruct::CGGraph*> graphs = essa->find_constraints(m, nbci);
+			std::vector<GraphConstruct::CGGraph*>::iterator graphIt;
+			GraphConstruct::CGGraph* graph;
 
-	}
+			for (graphIt = graphs.begin(); graphIt != graphs.end(); ++graphIt) {
 
-	Module::iterator mIt;
-	
-	for (mIt = m.begin(); mIt != m.end(); ++mIt) { mIt->viewCFG(); }
+				graph = *graphIt;
 
-	return false;
+				(*graphIt)->solve(nbci.getBoundsCheckVisitor()->getAllCheckCalls());
 
-    }	
+			}
+			
+			return false;
 
-};
+		}	
+
+	};
 
 }
   
