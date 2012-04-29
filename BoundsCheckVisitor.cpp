@@ -1,5 +1,6 @@
 #include "BoundsCheckVisitor.h"
 #include "ArrayAccessFactory.h"
+#include "RedundantCheckEliminator.h"
 #include "llvm/Constants.h"
 #include "llvm/Target/TargetData.h"
 #include "llvm/Support/IRBuilder.h"
@@ -26,6 +27,15 @@ namespace patterns
 				this->changed = true;
 			}
 		}
+	}
+
+	void BoundsCheckVisitor::visitBasicBlock(BasicBlock *blk)
+	{
+		// call super class's visit
+		InstructionVisitor::visitBasicBlock(blk);
+
+		// Eliminate some redundant checks from that block.
+		RedundantCheckEliminator::process(blk, this->accessMap);
 	}
 
 	AccessMap BoundsCheckVisitor::getArrayAccessMap()

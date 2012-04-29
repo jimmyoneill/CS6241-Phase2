@@ -51,10 +51,10 @@ namespace patterns
 		virtual void visitVAArgInst(VAArgInst *inst);
 
 		// The API.
-		void visit(Instruction *inst);
-		void visit(BasicBlock *blk);
-		void visit(Function *func);
-		void visit(Module *mod);
+		virtual void visitInstruction(Instruction *inst);
+		virtual void visitBasicBlock(BasicBlock *blk);
+		virtual void visitFunction(Function *func);
+		virtual void visitModule(Module *mod);
 	};
 }
 

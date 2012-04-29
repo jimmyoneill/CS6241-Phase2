@@ -7,8 +7,6 @@
 #include "llvm/Function.h"
 #include "llvm/BasicBlock.h"
 #include "llvm/Instruction.h"
-#include "BoundsCheckVisitor.h"
-#include "BoundsCheckCodeGenerator.h"
 #include "llvm/Support/raw_ostream.h"
 
 using namespace llvm;

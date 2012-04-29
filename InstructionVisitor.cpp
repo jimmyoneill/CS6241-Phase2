@@ -9,37 +9,37 @@ namespace patterns
 	}
 
 	// Visits a module.
-	void InstructionVisitor::visit(Module *mod)
+	void InstructionVisitor::visitModule(Module *mod)
 	{
 		if(mod != NULL)
 		{
 	        for(Module::iterator it = mod->begin(); it != mod->end(); ++it)
 	        {                 
-	            this->visit(cast<Function>(it));
+	            this->visitFunction(cast<Function>(it));
 	        }
     	}
 	}
 
 	// Visits a function.
-	void InstructionVisitor::visit(Function *func)
+	void InstructionVisitor::visitFunction(Function *func)
 	{
 		if(this->isRealFunction(func))
 		{
 			for(Function::iterator it = func->begin(); it != func->end(); ++it)
 	    	{
-	    		this->visit(cast<BasicBlock>(it));
+	    		this->visitBasicBlock(cast<BasicBlock>(it));
 	    	}
     	}
 	}
 
 	// Visits a basic block.
-	void InstructionVisitor::visit(BasicBlock *blk)
+	void InstructionVisitor::visitBasicBlock(BasicBlock *blk)
 	{
 		if(blk != NULL)
 		{
 			for(BasicBlock::iterator it = blk->begin(); it != blk->end(); ++it)
 			{
-				this->visit(cast<Instruction>(it));
+				this->visitInstruction(cast<Instruction>(it));
 			}
 		}
 	}
@@ -47,7 +47,7 @@ namespace patterns
 	/* Visits an instruction. Will no-op stuff subclasses don't care about. This is also
 	 * not an exhaustive implementation. Several operations are skipped because I don't
 	 * really care about them at the moment. */
-	void InstructionVisitor::visit(Instruction *inst)
+	void InstructionVisitor::visitInstruction(Instruction *inst)
 	{
 		if(inst != NULL)
 		{
