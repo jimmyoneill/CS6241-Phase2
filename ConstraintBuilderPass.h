@@ -1,7 +1,7 @@
 #ifndef CONSTRAINTBUILDERPASS_H
 #define CONSTRAINTBUILDERPASS_H
 
-#include "eSSA.h"
+#include "ESSA.h"
 #include "llvm/Pass.h"
 #include "llvm/Module.h"
 #include "llvm/Function.h"
