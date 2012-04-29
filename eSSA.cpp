@@ -2,24 +2,24 @@
 #include <sstream>
 
 
-eSSA::eSSA(Module &m, std::string check_func_name) {
+eSSA::eSSA(Module &m, std::string checkFuncName) {
 
 	D = false;
-	this->check_func_name = check_func_name;
-	SSA_to_eSSA(m);    	
+	this->checkFuncName = checkFuncName;
+	SsaToEssa(m);    	
 } 
 
-void eSSA::SSA_to_eSSA(Module &m) {
+void eSSA::SsaToEssa(Module &m) {
 
-	init_var_map(m);
-	init_pi_assignments(m);
+	initVarMap(m);
+	initPiAssignments(m);
     if (D) print_pi_functions();
 }
 
-void eSSA::init_var_map(Module &m) {
+void eSSA::initVarMap(Module &m) {
 //init the variable map
 
-	if (D) errs() << "eSSA::init_var_map\n";
+	if (D) errs() << "eSSA::initVarMap\n";
 
 	//find all the variable names 
 	for (Module::iterator f = m.begin(); f != m.end(); f++) {
@@ -29,15 +29,28 @@ void eSSA::init_var_map(Module &m) {
 		for (Function::arg_iterator arg = f->arg_begin(); arg != f->arg_end(); ++arg) {
 			if (arg->hasName()) {
 				//errs() << "arg has name " << arg->getName() << "\n";
-				add_name_to_var_map(arg->getName().str());
+				addNameToVarMap(arg->getName().str());
 			}
 		} 
 
 	    for (Function::iterator b = f->begin(); b != f->end(); b++) {
     		for (BasicBlock::iterator inst = b->begin(); inst != b->end(); inst++) {
                 if (inst->hasName()) {
-                    add_name_to_var_map(inst->getName().str());
+                    addNameToVarMap(inst->getName().str());
                 }			
+            }		
+        }	    
+    }
+
+	//for each instruction, set all the names to zero
+	std::vector<std::string>::iterator it;
+	for (Module::iterator f = m.begin(); f != m.end(); f++) {
+	    for (Function::iterator b = f->begin(); b != f->end(); b++) {
+            for (BasicBlock::iterator inst = b->begin(); inst != b->end(); inst++) {
+                for (size_t i = 0; i < names.size(); i++) {
+                    varMap[(Instruction*)inst][names.at(i)] = 0;
+                    if (D) errs() << names.at(i) << " -> " << varMap[(Instruction*)inst][names.at(i)] << "\n";
+                }		
             }		
         }	    
     }
@@ -45,7 +58,7 @@ void eSSA::init_var_map(Module &m) {
 	clear_static_var_map();
 }
 
-void eSSA::add_name_to_var_map(std::string name) {
+void eSSA::addNameToVarMap(std::string name) {
 
 	if(std::find(names.begin(), names.end(), name) != names.end()) {
     		// names contains the name already
@@ -62,16 +75,16 @@ void eSSA::clear_static_var_map() {
 	}	
 }
 
-void eSSA::init_pi_assignments(Module &m) {
+void eSSA::initPiAssignments(Module &m) {
 	//find and make pi assignments	
-	if (D) errs() << "eSSA::init_var_map\n";
+	if (D) errs() << "eSSA::initVarMap\n";
 
 	for (Module::iterator f = m.begin(); f != m.end(); f++) {
 	    for (Function::iterator b = f->begin(); b != f->end(); b++) {
     		for (BasicBlock::iterator inst = b->begin(); inst != b->end(); inst++) {
                 if (BranchInst *branchInst = dyn_cast<BranchInst>(&*inst)) {
                     //make pi assignments/edges that correspond to branch
-                    handle_br_pi_assignment(branchInst, b);
+                    handleBranchAtPiAssignment(branchInst, b);
                 }
 
                 if (CallInst *i = dyn_cast<CallInst>(inst)) {
@@ -79,9 +92,9 @@ void eSSA::init_pi_assignments(Module &m) {
                     Function* calledFunc = i->getCalledFunction();
                     if (calledFunc) {
                         //calls to external functions outside the compilation unit will be null here
-                        if (calledFunc->getName() == check_func_name) {
-                        //make pi assignment 
-                        handle_check_pi_assignment(i);
+                        if (calledFunc->getName() == checkFuncName) {
+                            //make pi assignment 
+                            handleCheckAtPiAssignment(i);
                         }
                     }			
                 }			
@@ -90,7 +103,7 @@ void eSSA::init_pi_assignments(Module &m) {
     }	
 }
 
-void eSSA::handle_br_pi_assignment(BranchInst *branchInst, BasicBlock *bb) {
+void eSSA::handleBranchAtPiAssignment(BranchInst *branchInst, BasicBlock *bb) {
 
 	//prune BB and make pi assignment
     if (branchInst->isConditional()) {
@@ -106,8 +119,8 @@ void eSSA::handle_br_pi_assignment(BranchInst *branchInst, BasicBlock *bb) {
                         CmpInst::Predicate pred = cmpInst->getPredicate();
                         if ( (pred >= CmpInst::ICMP_SGT) && (pred <= CmpInst::ICMP_SLE) ) {
                             if (D) errs() << "making pi assignment info for condition " << conditionalName << "\n";
-                            br_to_cmp[branchInst] = cmpInst;
-                            make_pi_assignments_for_br(branchInst, cmpInst, bb);
+                            branchToCompare[branchInst] = cmpInst;
+                            makePiAssignmentsForBranch(branchInst, cmpInst, bb);
                         }
                     }
                 }
@@ -116,9 +129,9 @@ void eSSA::handle_br_pi_assignment(BranchInst *branchInst, BasicBlock *bb) {
     }	
 }
 
-void eSSA::make_pi_assignments_for_br(BranchInst *branchInst, CmpInst *cmpInst, BasicBlock *bb) {
+void eSSA::makePiAssignmentsForBranch(BranchInst *branchInst, CmpInst *cmpInst, BasicBlock *bb) {
 
-	if (branchInst->getNumSuccessors() < 2) errs() << "Branch without 2 successors in eSSA::make_pi_assignments_for_br\n";
+	if (branchInst->getNumSuccessors() < 2) errs() << "Branch without 2 successors in eSSA::makePiAssignmentsForBranch\n";
 		
 	for (size_t i = 0; i < branchInst->getNumSuccessors(); i++) {
 		if (D) errs() << "successor: " << branchInst->getSuccessor(i)->getName() << "\n";
@@ -135,7 +148,7 @@ void eSSA::make_pi_assignments_for_br(BranchInst *branchInst, CmpInst *cmpInst, 
 	}
 }
 
-void eSSA::handle_check_pi_assignment(CallInst *inst) {
+void eSSA::handleCheckAtPiAssignment(CallInst *inst) {
 
 	std::string name;
 
@@ -145,7 +158,7 @@ void eSSA::handle_check_pi_assignment(CallInst *inst) {
 	if (D) errs() << "making pi assignment for name " << name << "\n";
 	if (D) errs() << "at instruction " << *inst << "\n";
 	piAssignment *pa = new piAssignment(name);
-	check_pi_assignments[inst] = pa;
+	checkPiAssignments[inst] = pa;
 }
 
 void eSSA::rename(DominatorTree &DT) {
@@ -170,15 +183,15 @@ void eSSA::dom_tree_preorder(DomTreeNode *curr_node) {
 				if (D) errs() << "pi assignment operand name " << pis.at(i)->operandBaseName << "\n";
 				static_var_map[pis.at(i)->operandBaseName] += 1;
 				int newSub = static_var_map[pis.at(i)->operandBaseName];
-				rename_var_from_node(pis.at(i)->operandBaseName, curr_node, newSub);
+				renameVarFromNode(pis.at(i)->operandBaseName, curr_node, newSub);
 			}
 		}
 	}
 
 	//iterate through instructions in block to find a check with a piAssignment	
 	for (BasicBlock::iterator inst = BB->begin(); inst != BB->end(); inst++) {
-		if(check_pi_assignments[inst]) {
-			piAssignment *pa = check_pi_assignments[inst];
+		if(checkPiAssignments[inst]) {
+			piAssignment *pa = checkPiAssignments[inst];
 			static_var_map[pa->operandBaseName] += 1;
 			int newSub = static_var_map[pa->operandBaseName];
 			rename_var_from_inst(pa->operandBaseName, curr_node, newSub, inst);
@@ -190,19 +203,19 @@ void eSSA::dom_tree_preorder(DomTreeNode *curr_node) {
     }
 }
 
-void eSSA::rename_var_from_node(std::string operandBaseName, DomTreeNode *curr_node, int newSub) {
+void eSSA::renameVarFromNode(std::string operandBaseName, DomTreeNode *curr_node, int newSub) {
 //for curr_node and all of the nodes that it dominates, go through and rename the variable operandName with the subscript newSub
 
 	if (D) errs() << "renaming " << operandBaseName << " in block " << curr_node->getBlock()->getName() << "\n";
-	//var_map[curr_node->getBlock()][operandName] = newSub;
+	//varMap[curr_node->getBlock()][operandName] = newSub;
 
 	BasicBlock *b = curr_node->getBlock();
 	for (BasicBlock::iterator inst = b->begin(); inst != b->end(); inst++) {
-		var_map[(Instruction*)inst][operandBaseName] = newSub;
+		varMap[(Instruction*)inst][operandBaseName] = newSub;
 	}		
 
 	for(DomTreeNode::iterator child = curr_node->begin(); child != curr_node->end(); ++child) {
-		rename_var_from_node(operandBaseName, *child, newSub);
+		renameVarFromNode(operandBaseName, *child, newSub);
 	}
 }
 
@@ -215,7 +228,7 @@ void eSSA::rename_var_from_inst(std::string operandBaseName, DomTreeNode *curr_n
 	for (BasicBlock::iterator inst = b->begin(); inst != b->end(); inst++) {
 
 		if(instruction_hit) {
-			var_map[(Instruction*)inst][operandBaseName] = newSub;
+			varMap[(Instruction*)inst][operandBaseName] = newSub;
 		}
 
 		if(instruction == inst) {
@@ -226,7 +239,7 @@ void eSSA::rename_var_from_inst(std::string operandBaseName, DomTreeNode *curr_n
 
 	//then rename all of the blocks that this containing block dominates
 	for(DomTreeNode::iterator child = curr_node->begin(); child != curr_node->end(); ++child) {
-		rename_var_from_node(operandBaseName, *child, newSub);
+		renameVarFromNode(operandBaseName, *child, newSub);
 	}	
 } 
 
@@ -250,11 +263,11 @@ void eSSA::rename_pi_assignments(DomTreeNode *curr_node) {
 			for (size_t i = 0; i < pis.size(); i++) {  
 				std::string unmappedName = pis.at(i)->operandBaseName; 
 				if (D) errs() << "changed pi assignment operand subscript for name " << pis.at(i)->operandBaseName << "\n";
-				//pis.at(i)->operandSubscript = get_mapped_name(pis.at(i)->operandBaseName, PredBB->getTerminator()); 
-				pis.at(i)->operandSubscript = var_map[PredBB->getTerminator()][unmappedName]; 	
+				//pis.at(i)->operandSubscript = getMappedName(pis.at(i)->operandBaseName, PredBB->getTerminator()); 
+				pis.at(i)->operandSubscript = varMap[PredBB->getTerminator()][unmappedName]; 	
 				if (D) errs() << "to " << pis.at(i)->operandSubscript << "\n";
-				//pis.at(i)->assignedName = get_mapped_name(unmappedName, BB->getFirstNonPHI()); 
-				pis.at(i)->assignedSubscript = var_map[BB->getFirstNonPHI()][unmappedName]; 
+				//pis.at(i)->assignedName = getMappedName(unmappedName, BB->getFirstNonPHI()); 
+				pis.at(i)->assignedSubscript = varMap[BB->getFirstNonPHI()][unmappedName]; 
 				if (D) errs() << "set pi assignment assigned subscript for name " << unmappedName << "\n";
 				if (D) errs() << "to " << pis.at(i)->assignedSubscript << "\n";		
 			}									
@@ -262,16 +275,16 @@ void eSSA::rename_pi_assignments(DomTreeNode *curr_node) {
 	}
 
 	for (BasicBlock::iterator inst = BB->begin(); inst != BB->end(); inst++) {
-		if(check_pi_assignments[inst]) {
-			piAssignment *pa = check_pi_assignments[inst];
+		if(checkPiAssignments[inst]) {
+			piAssignment *pa = checkPiAssignments[inst];
 			std::string unmappedName = pa->operandBaseName; 
 			if (D) errs() << "changed pi assignment subscript for operand name " << pa->operandBaseName << "\n";
-			//pa->operandName = get_mapped_name(pa->operandName, inst);
-			pa->operandSubscript = var_map[inst][unmappedName]; 	 	
+			//pa->operandName = getMappedName(pa->operandName, inst);
+			pa->operandSubscript = varMap[inst][unmappedName]; 	 	
 			if (D) errs() << "to " << pa->operandSubscript << "\n";
 			if(Instruction *next = get_next_instruction(BB, inst)) {
-				//get_mapped_name(unmappedName, next); 
-				pa->assignedSubscript = var_map[next][unmappedName]; 
+				//getMappedName(unmappedName, next); 
+				pa->assignedSubscript = varMap[next][unmappedName]; 
 			}
 			else errs() << "could not get next instruction in rename_pi_assignments\n";
 			if (D) errs() << "set pi assignment assigned name " << unmappedName << "\n";
@@ -285,7 +298,7 @@ void eSSA::rename_pi_assignments(DomTreeNode *curr_node) {
 }
 
 void eSSA::rename_phi_assignments(DomTreeNode *curr_node) {
-//for each phi function, change the var_map at its Instruction* to map the same to the BBs the vars came from 
+//for each phi function, change the varMap at its Instruction* to map the same to the BBs the vars came from 
 	BasicBlock *b = curr_node->getBlock();
 	for (BasicBlock::iterator inst = b->begin(); inst != b->end(); inst++) {		
 		if (PHINode *pn = dyn_cast<PHINode>(inst)) {
@@ -306,7 +319,7 @@ void eSSA::rename_phi_assignments(DomTreeNode *curr_node) {
 							if(v->getName().str() == pis.at(p)->assignedBaseName) {
 								in_essa_edge = true;
 								new_sub = pis.at(p)->assignedSubscript;
-								var_map[inst][v->getName().str()] = new_sub;
+								varMap[inst][v->getName().str()] = new_sub;
 								break;
 							}
 						}
@@ -316,9 +329,9 @@ void eSSA::rename_phi_assignments(DomTreeNode *curr_node) {
 					same as the last instruction in the pred block.
 					*/
 					if (!in_essa_edge) {
-						new_sub = var_map[pn->getIncomingBlock(i)->getTerminator()][v->getName().str()];
+						new_sub = varMap[pn->getIncomingBlock(i)->getTerminator()][v->getName().str()];
 						//associate the subscript with the variable at the phi node
-						var_map[inst][v->getName().str()] = new_sub;
+						varMap[inst][v->getName().str()] = new_sub;
 					}
 				}
 			}	
@@ -330,19 +343,15 @@ void eSSA::rename_phi_assignments(DomTreeNode *curr_node) {
     }
 }
 
-void eSSA::make_branch_conditionals(BranchInst *branchInst, CmpInst *cmpInst, BasicBlock *bb) {
-	//this is everything needed to make C4
-}
-
 //called from phase1CDpass
-std::vector<GraphConstruct::CGGraph*> eSSA::find_constraints(Module &m, nbci::NaiveBoundsCheckInserter& inputNBCI) {
+std::vector<GraphConstruct::CGGraph*> eSSA::findConstraints(Module &m, nbci::NaiveBoundsCheckInserter& inputNBCI) {
 	//find constraints	
 
 	std::vector<GraphConstruct::CGGraph*> toReturn;
 
 	for (Module::iterator f = m.begin(); f != m.end(); f++) {
 
-		if(D) errs() << "\n------------- making CGGraph for function named " << f->getName() << "\n\n";
+		if(1) errs() << "\n------------- making CGGraph for function named " << f->getName() << "\n\n";
 		GraphConstruct::CGGraph *cggraph = new GraphConstruct::CGGraph(this, f->getName().str());
 
 		cggraph->addArrayLengths(inputNBCI.getBoundsCheckVisitor()->getArrayAccessMap());
@@ -350,119 +359,118 @@ std::vector<GraphConstruct::CGGraph*> eSSA::find_constraints(Module &m, nbci::Na
 	    for (Function::iterator b = f->begin(); b != f->end(); b++) {
     		for (BasicBlock::iterator inst = b->begin(); inst != b->end(); inst++) {
 				
-			//CONTROL FLOW
-			if (PHINode *phiNode = dyn_cast<PHINode>(inst)) {
-				if (phiNode->getNumIncomingValues() == 2) {
-						if (phiNode->getIncomingValue(0)->getType()->isIntegerTy() && phiNode->getIncomingValue(1)->getType()->isIntegerTy()) {
-						if (D) errs() << "got CONTROL FLOW \n";
-						if (D) errs() << "\n";
-						cggraph->addConstraint(inst);
-					}
-				}
-			}	
-			//C1 and C2
-			else if (StoreInst* storeInst = dyn_cast<StoreInst>(inst)) {
-				if (storeInst->getValueOperand()->getType()->isIntegerTy()) {
-					if (storeInst->getPointerOperand()->hasName()) {
-						if (D) errs() << "inst: " << *inst << "\n"
-						<< "puts value " << storeInst->getValueOperand()->getName() << " into " 
-						<< storeInst->getPointerOperand()->getName() << "\n";
-						if (D) errs() << "GOT C1/C2 \n";
-						if (D) errs() << "\n";
-						cggraph->addConstraint(inst);
+                //CONTROL FLOW
+                if (PHINode *phiNode = dyn_cast<PHINode>(inst)) {
+                    if (phiNode->getNumIncomingValues() == 2) {
+                            if (phiNode->getIncomingValue(0)->getType()->isIntegerTy() && phiNode->getIncomingValue(1)->getType()->isIntegerTy()) {
+                            if (D) errs() << "got CONTROL FLOW \n";
+                            if (D) errs() << "\n";
+                            cggraph->addConstraint(inst);
+                        }
+                    }
+                }	
+                //C1 and C2
+                else if (StoreInst* storeInst = dyn_cast<StoreInst>(inst)) {
+                    if (storeInst->getValueOperand()->getType()->isIntegerTy()) {
+                        if (storeInst->getPointerOperand()->hasName()) {
+                            if (D) errs() << "inst: " << *inst << "\n"
+                            << "puts value " << storeInst->getValueOperand()->getName() << " into " 
+                            << storeInst->getPointerOperand()->getName() << "\n";
+                            if (D) errs() << "GOT C1/C2 \n";
+                            if (D) errs() << "\n";
+                            cggraph->addConstraint(inst);
 
-					}
-				}
-			}
-			else if (LoadInst* loadInst = dyn_cast<LoadInst>(inst)) {
-				if (loadInst->getPointerOperand()->hasName()) {
-					if (D) errs() << "inst: " << *inst << "\n"
-					<< "loads " << loadInst->getPointerOperand()->getName() << " into " << loadInst->getName() << "\n";
-					if (D) errs() << "contained type is integer type?: " 
-					<< loadInst->getPointerOperand()->getType()->getContainedType(0)->isIntegerTy() << "\n";
-					if (D) errs() << "GOT C1/C2 \n";
-					if (D) errs() << "\n";
+                        }
+                    }
+                }
+                else if (LoadInst* loadInst = dyn_cast<LoadInst>(inst)) {
+                    if (loadInst->getPointerOperand()->hasName()) {
+                        if (D) errs() << "inst: " << *inst << "\n"
+                        << "loads " << loadInst->getPointerOperand()->getName() << " into " << loadInst->getName() << "\n";
+                        if (D) errs() << "contained type is integer type?: " 
+                        << loadInst->getPointerOperand()->getType()->getContainedType(0)->isIntegerTy() << "\n";
+                        if (D) errs() << "GOT C1/C2 \n";
+                        if (D) errs() << "\n";
 
-					//if integer is being loaded, send it
-					if (loadInst->getPointerOperand()->getType()->getContainedType(0)->isIntegerTy()) { 
-						cggraph->addConstraint(inst);
-					}
-				}
-			}
-			else if (CastInst* castInst = dyn_cast<CastInst>(inst)) {
-				if (castInst->isIntegerCast()) {
-					if (castInst->hasName()) {
-						if (D) errs() << "GOT INT CAST\n";
-						if (D) errs() << "inst: " << *inst << "\n"
-						<< "loads " << castInst->getOperand(0)->getName() << " into " << castInst->getName() << "\n";
-						if (D) errs() << "GOT C1/C2 \n";
-						if (D) errs() << "\n";
-						cggraph->addConstraint(inst);
-					}
-				}
-			}	
-			//C3 - has only one variable and one int
-			else if (isa<BinaryOperator>(inst)) {	    	
-				int intCount = 0;
-				int varCount = 0;
-				for (User::op_iterator op = inst->op_begin(); op != inst->op_end(); op++) {
-					if (op->get()->hasName()) ++varCount;
-					else if (isa<ConstantInt>(op->get())) ++intCount;
-				}
-				
-				if ( (intCount == 1) && (varCount == 1) ) {
-					if (D) errs() << "got C3 \n";
-					if (D) errs() << "\n";		
-					cggraph->addConstraint(inst);
-				}
-			}
-			//C4 - is a branch and corresponds to pi assignments			
-			else if (BranchInst *branchInst = dyn_cast<BranchInst>(&*inst)) {
-				
-				if (branchInst->getNumSuccessors() == 2) {
-					bool acceptConstraint = true;
-					std::vector<piAssignment *> pis1;
-					std::vector<piAssignment *> pis2;
-					for (size_t i = 0; i < branchInst->getNumSuccessors(); i++) {
-						BasicBlock* pred = branchInst->getParent();
-						BasicBlock* succ = branchInst->getSuccessor(i);					
-						if (edges[pred][succ]) {
-							std::vector<piAssignment *> pis;
-							pis = edges[pred][succ]->piAssignments;
-							if (pis.size() == 0) {
-								errs() << "ERROR: pis has no assignments in eSSA::find_constraints \n";
-								acceptConstraint = false;
-								break;
-							}
-							if (i == 0) pis1 = pis;
-							else pis2 = pis;
-						}
-						else {
-							acceptConstraint = false;
-							break;
-						}
-					}
-					if (acceptConstraint) {
-						if (D) errs() << "got C4:\n";
-						if (D) errs() << *branchInst << "\n";
-						if (D) errs() << "\n";
-						cggraph->addConstraint(branchInst, pis1, pis2);
-					}
-				}				
-            		}
-			//C5 - is the a check function call
-			else if (CallInst *i = dyn_cast<CallInst>(inst)) {
-				//make pi assignments that correspond to checks
-				if(check_pi_assignments[inst]) {
-					if (D) errs() << "GOT C5\n";
-					if (D) errs() << "\n";
-					piAssignment *pa = check_pi_assignments[inst];
-					cggraph->addConstraint(i, pa);
-				}
-
-    		    	}									
-			} // end BasicBlock::iterator		
-		} // end Function::iterator 
+                        //if integer is being loaded, send it
+                        if (loadInst->getPointerOperand()->getType()->getContainedType(0)->isIntegerTy()) { 
+                            cggraph->addConstraint(inst);
+                        }
+                    }
+                }
+                else if (CastInst* castInst = dyn_cast<CastInst>(inst)) {
+                    if (castInst->isIntegerCast()) {
+                        if (castInst->hasName()) {
+                            if (D) errs() << "GOT INT CAST\n";
+                            if (D) errs() << "inst: " << *inst << "\n"
+                            << "loads " << castInst->getOperand(0)->getName() << " into " << castInst->getName() << "\n";
+                            if (D) errs() << "GOT C1/C2 \n";
+                            if (D) errs() << "\n";
+                            cggraph->addConstraint(inst);
+                        }
+                    }
+                }	
+                //C3 - has only one variable and one int
+                else if (isa<BinaryOperator>(inst)) {	    	
+                    int intCount = 0;
+                    int varCount = 0;
+                    for (User::op_iterator op = inst->op_begin(); op != inst->op_end(); op++) {
+                        if (op->get()->hasName()) ++varCount;
+                        else if (isa<ConstantInt>(op->get())) ++intCount;
+                    }
+                    
+                    if ( (intCount == 1) && (varCount == 1) ) {
+                        if (D) errs() << "got C3 \n";
+                        if (D) errs() << "\n";		
+                        cggraph->addConstraint(inst);
+                    }
+                }
+                //C4 - is a branch and corresponds to pi assignments			
+                else if (BranchInst *branchInst = dyn_cast<BranchInst>(&*inst)) {
+                    
+                    if (branchInst->getNumSuccessors() == 2) {
+                        bool acceptConstraint = true;
+                        std::vector<piAssignment *> pis1;
+                        std::vector<piAssignment *> pis2;
+                        for (size_t i = 0; i < branchInst->getNumSuccessors(); i++) {
+                            BasicBlock* pred = branchInst->getParent();
+                            BasicBlock* succ = branchInst->getSuccessor(i);					
+                            if (edges[pred][succ]) {
+                                std::vector<piAssignment *> pis;
+                                pis = edges[pred][succ]->piAssignments;
+                                if (pis.size() == 0) {
+                                    errs() << "ERROR: pis has no assignments in eSSA::findConstraints \n";
+                                    acceptConstraint = false;
+                                    break;
+                                }
+                                if (i == 0) pis1 = pis;
+                                else pis2 = pis;
+                            }
+                            else {
+                                acceptConstraint = false;
+                                break;
+                            }
+                        }
+                        if (acceptConstraint) {
+                            if (D) errs() << "got C4:\n";
+                            if (D) errs() << *branchInst << "\n";
+                            if (D) errs() << "\n";
+                            cggraph->addConstraint(branchInst, pis1, pis2);
+                        }
+                    }				
+                }
+                //C5 - is the a check function call
+                else if (CallInst *i = dyn_cast<CallInst>(inst)) {
+                    //make pi assignments that correspond to checks
+                    if(checkPiAssignments[inst]) {
+                        if (D) errs() << "GOT C5\n";
+                        if (D) errs() << "\n";
+                        piAssignment *pa = checkPiAssignments[inst];
+                        cggraph->addConstraint(i, pa);
+                    }
+                }									
+            } // end BasicBlock::iterator		
+        } // end Function::iterator 
 
 		cggraph->constructGraph();	
 		toReturn.push_back(cggraph);
@@ -471,13 +479,13 @@ std::vector<GraphConstruct::CGGraph*> eSSA::find_constraints(Module &m, nbci::Na
 
 	return toReturn;
 
-} // end find_constraints
+} // end findConstraints
 
 
-std::string eSSA::get_mapped_name(std::string name, Instruction *inst) {
+std::string eSSA::getMappedName(std::string name, Instruction *inst) {
 
 	//tag on the eSSA subscript to make a string literal
-	int subscript = var_map[inst][name]; 
+	int subscript = varMap[inst][name]; 
 	return name + int_to_string(subscript);
 }
 
@@ -496,7 +504,7 @@ void eSSA::print_var_map(DomTreeNode *curr_node) {
 	BasicBlock* b = curr_node->getBlock();
 	for (BasicBlock::iterator inst = b->begin(); inst != b->end(); inst++) {
 		for (size_t i = 0; i < names.size(); i++) {
-			errs() << b->getName() << " - " << names.at(i) << " - " << var_map[(Instruction*)inst][names.at(i)] << "\n";
+			errs() << b->getName() << " - " << names.at(i) << " - " << varMap[(Instruction*)inst][names.at(i)] << "\n";
 		}	
 	}		
 
@@ -526,7 +534,7 @@ void eSSA::print_pi_functions() {
     }
 }
 
-void eSSA::output_test(Module &m) {
+void eSSA::outputTest(Module &m) {
 
 	errs() << "\noutput test: \n";
     
@@ -543,13 +551,13 @@ void eSSA::output_test(Module &m) {
                 for (User::op_iterator op = inst->op_begin(); op != inst->op_end(); op++) {
                     if (op->get()->hasName()) {
                         std::string name = op->get()->getName(); 
-                            errs() << " - " << get_mapped_name(name, inst);
+                            errs() << " - " << getMappedName(name, inst);
                     } 
                 }
                 errs() << "\n";	
                     
-                if(check_pi_assignments[inst]) {
-                    piAssignment *pa = check_pi_assignments[inst];
+                if(checkPiAssignments[inst]) {
+                    piAssignment *pa = checkPiAssignments[inst];
                     errs() << "PI ASSIGNMENT: " << pa->getAssignedName() << " = " << pa->getOperandName() << "\n";
                 }
 

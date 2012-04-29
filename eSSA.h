@@ -6,7 +6,7 @@
 #include "llvm/Instruction.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/InstIterator.h"
-#include "llvm/Support/CallSite.h" // CallInst
+#include "llvm/Support/CallSite.h" 
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Intrinsics.h"
@@ -38,8 +38,8 @@ public:
     (BB*) -> (variable name) -> (rename stack depth)
     - MUST BE RESET FOR EACH FUNCTION BECAUSE OF VARIABLE NAMESPACES
     */
-    std::map<Instruction*, std::map<std::string, int> > var_map;
-    std::map<std::string, int> static_var_map;
+    std::map<Instruction*, std::map<std::string, int> > varMap;
+    std::map<std::string, int> staticVarMap;
     std::vector<std::string> names;	
 
     /*
@@ -52,33 +52,32 @@ public:
     (branch inst) -> (cmp inst)
     - for the branches that create eSSAedges, the compares that determine the branch
     */
-    std::map<BranchInst*, CmpInst*> br_to_cmp;
+    std::map<BranchInst*, CmpInst*> branchToCompare;
 
     /*
     (check instruction) -> (piAssignment)	
     */
-    std::map<Instruction*, piAssignment*> check_pi_assignments;
-    std::vector<CallInst*> call_insts_removed;
+    std::map<Instruction*, piAssignment*> checkPiAssignments;
+    std::vector<CallInst*> callInstsRemoved;
     
-    eSSA(Module &m, std::string check_func_name);
+    eSSA(Module &m, std::string checkFuncName);
     void rename(DominatorTree &DT);
-    void rename_var_from_node(std::string operandName, DomTreeNode *curr_node, int newSub);
-    std::vector<GraphConstruct::CGGraph*> find_constraints(Module &m, nbci::NaiveBoundsCheckInserter& inputNBCI); //called from phase1CDpass
-    void output_test(Module &m);
-    std::string get_mapped_name(std::string name, Instruction *inst);
+    void renameVarFromNode(std::string operandName, DomTreeNode *curr_node, int newSub);
+    std::vector<GraphConstruct::CGGraph*> findConstraints(Module &m, nbci::NaiveBoundsCheckInserter& inputNBCI); //called from phase1CDpass
+    void outputTest(Module &m);
+    std::string getMappedName(std::string name, Instruction *inst);
 	
     
 private:
 	
-    std::string check_func_name;
-    void SSA_to_eSSA(Module &m);
-    void init_var_map(Module &m);
-    void init_pi_assignments(Module &m);
-    void handle_br_pi_assignment(BranchInst *branchInst, BasicBlock *bb);  
-    void handle_check_pi_assignment(CallInst *inst); 
-    void make_branch_conditionals(BranchInst *branchInst, CmpInst *cmpInst, BasicBlock *bb);
-    void make_pi_assignments_for_br(BranchInst *branchInst, CmpInst *cmpInst, BasicBlock *bb);
-    void add_name_to_var_map(std::string name); 
+    std::string checkFuncName;
+    void SsaToEssa(Module &m);
+    void initVarMap(Module &m);
+    void initPiAssignments(Module &m);
+    void handleBranchAtPiAssignment(BranchInst *branchInst, BasicBlock *bb);  
+    void handleCheckAtPiAssignment(CallInst *inst); 
+    void makePiAssignmentsForBranch(BranchInst *branchInst, CmpInst *cmpInst, BasicBlock *bb);
+    void addNameToVarMap(std::string name); 
     void rename_pi_assignments(DomTreeNode *curr_node); 
     void rename_phi_assignments(DomTreeNode *curr_node); 
     void rename_var_from_inst(std::string operandName, DomTreeNode *curr_node, int newSub, Instruction *instruction);
