@@ -338,7 +338,7 @@ std::vector<GraphConstruct::CGGraph*> ESSA::findConstraints(Module &m, nbci::Nai
 
 	for (Module::iterator f = m.begin(); f != m.end(); f++) {
 
-		if(1) errs() << "\n------------- making CGGraph for function named " << f->getName() << "\n\n";
+		if(D) errs() << "\n------------- making CGGraph for function named " << f->getName() << "\n\n";
 		GraphConstruct::CGGraph *cggraph = new GraphConstruct::CGGraph(this, f->getName().str());
 
 		cggraph->addArrayLengths(inputNBCI.getBoundsCheckVisitor()->getArrayAccessMap());
