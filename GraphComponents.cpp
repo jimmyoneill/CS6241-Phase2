@@ -217,7 +217,7 @@ using namespace llvm;
 			else 
 			{
 		    	
-				if ( (*callIt)->getParent()->getParent()->getName() == this->funcName) {
+				if ((*callIt)->getParent()->getParent()->getName() == this->funcName) {
 					
 					Value *v0 = (*callIt)->getArgOperand(0);
 					Value *v1 = (*callIt)->getArgOperand(1);
