@@ -1,25 +1,25 @@
-#include "eSSA.h"
+#include "ESSA.h"
 #include <sstream>
 
 
-eSSA::eSSA(Module &m, std::string checkFuncName) {
+ESSA::ESSA(Module &m, std::string checkFuncName) {
 
 	D = false;
 	this->checkFuncName = checkFuncName;
 	SsaToEssa(m);    	
 } 
 
-void eSSA::SsaToEssa(Module &m) {
+void ESSA::SsaToEssa(Module &m) {
 
 	initVarMap(m);
 	initPiAssignments(m);
     if (D) printPiFunctions();
 }
 
-void eSSA::initVarMap(Module &m) {
+void ESSA::initVarMap(Module &m) {
 //init the variable map
 
-	if (D) errs() << "eSSA::initVarMap\n";
+	if (D) errs() << "ESSA::initVarMap\n";
 
 	//find all the variable names 
 	for (Module::iterator f = m.begin(); f != m.end(); f++) {
@@ -45,7 +45,7 @@ void eSSA::initVarMap(Module &m) {
 	clearStaticVarMap();
 }
 
-void eSSA::addNameToVarMap(std::string name) {
+void ESSA::addNameToVarMap(std::string name) {
 
 	if(std::find(names.begin(), names.end(), name) != names.end()) {
     		// names contains the name already
@@ -55,16 +55,16 @@ void eSSA::addNameToVarMap(std::string name) {
 	}
 }
 
-void eSSA::clearStaticVarMap() {
+void ESSA::clearStaticVarMap() {
 
 	for (size_t i = 0; i < names.size(); i++) {
 		staticVarMap[names.at(i)] = 0;
 	}	
 }
 
-void eSSA::initPiAssignments(Module &m) {
+void ESSA::initPiAssignments(Module &m) {
 	//find and make pi assignments	
-	if (D) errs() << "eSSA::initVarMap\n";
+	if (D) errs() << "ESSA::initVarMap\n";
 
 	for (Module::iterator f = m.begin(); f != m.end(); f++) {
 	    for (Function::iterator b = f->begin(); b != f->end(); b++) {
@@ -90,7 +90,7 @@ void eSSA::initPiAssignments(Module &m) {
     }	
 }
 
-void eSSA::handleBranchAtPiAssignment(BranchInst *branchInst, BasicBlock *bb) {
+void ESSA::handleBranchAtPiAssignment(BranchInst *branchInst, BasicBlock *bb) {
 
 	//prune BB and make pi assignment
     if (branchInst->isConditional()) {
@@ -116,13 +116,13 @@ void eSSA::handleBranchAtPiAssignment(BranchInst *branchInst, BasicBlock *bb) {
     }	
 }
 
-void eSSA::makePiAssignmentsForBranch(BranchInst *branchInst, CmpInst *cmpInst, BasicBlock *bb) {
+void ESSA::makePiAssignmentsForBranch(BranchInst *branchInst, CmpInst *cmpInst, BasicBlock *bb) {
 
-	if (branchInst->getNumSuccessors() < 2) errs() << "Branch without 2 successors in eSSA::makePiAssignmentsForBranch\n";
+	if (branchInst->getNumSuccessors() < 2) errs() << "Branch without 2 successors in ESSA::makePiAssignmentsForBranch\n";
 		
 	for (size_t i = 0; i < branchInst->getNumSuccessors(); i++) {
 		if (D) errs() << "successor: " << branchInst->getSuccessor(i)->getName() << "\n";
-		eSSAedge *edge = new eSSAedge();
+		ESSAedge *edge = new ESSAedge();
 
 		for (User::op_iterator op = cmpInst->op_begin(); op != cmpInst->op_end(); op++) {
 			if (op->get()->hasName()) {
@@ -130,12 +130,12 @@ void eSSA::makePiAssignmentsForBranch(BranchInst *branchInst, CmpInst *cmpInst, 
 				edge->piAssignments.push_back( new piAssignment(op->get()->getName().str()) );
 			} 
 		}
-		//add the eSSAedge instance to the edges member
+		//add the ESSAedge instance to the edges member
 		edges[bb][branchInst->getSuccessor(i)] = edge;
 	}
 }
 
-void eSSA::handleCheckAtPiAssignment(CallInst *inst) {
+void ESSA::handleCheckAtPiAssignment(CallInst *inst) {
 
 	std::string name;
 
@@ -148,21 +148,21 @@ void eSSA::handleCheckAtPiAssignment(CallInst *inst) {
 	checkPiAssignments[inst] = pa;
 }
 
-void eSSA::rename(DominatorTree &DT) {
+void ESSA::rename(DominatorTree &DT) {
 
 	domTreePreorder(DT.getRootNode());
 	renamePiAssignments(DT.getRootNode());
 	renamePhiAssignments(DT.getRootNode());
 }
 
-void eSSA::domTreePreorder(DomTreeNode *currNode) {
+void ESSA::domTreePreorder(DomTreeNode *currNode) {
 //do a preorder traversal of the dom tree, rename when we find pi assignments
 
 	BasicBlock *BB = currNode->getBlock();
 	for (pred_iterator PI = pred_begin(BB), E = pred_end(BB); PI != E; ++PI) { 
 		
 		BasicBlock *PredBB = *PI;
-		//check if eSSAedge exists, if it does and contains pi assignments, reorder from that node
+		//check if ESSAedge exists, if it does and contains pi assignments, reorder from that node
 		if (edges[PredBB][BB] != NULL) {
 			std::vector<piAssignment *> pis = edges[PredBB][BB]->piAssignments;
 			if (D) errs() << "from " << PredBB->getName() << " to " << BB->getName() << "\n";
@@ -190,7 +190,7 @@ void eSSA::domTreePreorder(DomTreeNode *currNode) {
     }
 }
 
-void eSSA::renameVarFromNode(std::string operandBaseName, DomTreeNode *currNode, int newSub) {
+void ESSA::renameVarFromNode(std::string operandBaseName, DomTreeNode *currNode, int newSub) {
 //for currNode and all of the nodes that it dominates, go through and rename the variable operandName with the subscript newSub
 
 	if (D) errs() << "renaming " << operandBaseName << " in block " << currNode->getBlock()->getName() << "\n";
@@ -206,7 +206,7 @@ void eSSA::renameVarFromNode(std::string operandBaseName, DomTreeNode *currNode,
 	}
 }
 
-void eSSA::renameVarFromInst(std::string operandBaseName, DomTreeNode *currNode, int newSub, Instruction *instruction) {
+void ESSA::renameVarFromInst(std::string operandBaseName, DomTreeNode *currNode, int newSub, Instruction *instruction) {
 
 	bool hitInstruction = false;
 	BasicBlock *b = currNode->getBlock();
@@ -230,7 +230,7 @@ void eSSA::renameVarFromInst(std::string operandBaseName, DomTreeNode *currNode,
 	}	
 } 
 
-void eSSA::renamePiAssignments(DomTreeNode *currNode) {
+void ESSA::renamePiAssignments(DomTreeNode *currNode) {
 	
 	if (D) errs() << "renamePiAssignments\n";
 
@@ -284,7 +284,7 @@ void eSSA::renamePiAssignments(DomTreeNode *currNode) {
     }
 }
 
-void eSSA::renamePhiAssignments(DomTreeNode *currNode) {
+void ESSA::renamePhiAssignments(DomTreeNode *currNode) {
 //for each phi function, change the varMap at its Instruction* to map the same to the BBs the vars came from 
 	BasicBlock *b = currNode->getBlock();
 	for (BasicBlock::iterator inst = b->begin(); inst != b->end(); inst++) {		
@@ -296,7 +296,7 @@ void eSSA::renamePhiAssignments(DomTreeNode *currNode) {
 					int newSub;
 					bool isInEssaEdge = false;
 					/*
-					Check if there is an eSSAedge with piAssignments. This will happen at critical edges
+					Check if there is an ESSAedge with piAssignments. This will happen at critical edges
 					If there is, make sure that if the piAssignments renamed a variable that is 
 					in the current phi, node, use that new assigned name
 					*/
@@ -312,7 +312,7 @@ void eSSA::renamePhiAssignments(DomTreeNode *currNode) {
 						}
 					}
 					/*
-					If the var wasn't present in an eSSAedge, set the mapping at the phi node to be the
+					If the var wasn't present in an ESSAedge, set the mapping at the phi node to be the
 					same as the last instruction in the pred block.
 					*/
 					if (!isInEssaEdge) {
@@ -331,7 +331,7 @@ void eSSA::renamePhiAssignments(DomTreeNode *currNode) {
 }
 
 //called from phase1CDpass
-std::vector<GraphConstruct::CGGraph*> eSSA::findConstraints(Module &m, nbci::NaiveBoundsCheckInserter& inputNBCI) {
+std::vector<GraphConstruct::CGGraph*> ESSA::findConstraints(Module &m, nbci::NaiveBoundsCheckInserter& inputNBCI) {
 	//find constraints	
 
 	std::vector<GraphConstruct::CGGraph*> toReturn;
@@ -426,7 +426,7 @@ std::vector<GraphConstruct::CGGraph*> eSSA::findConstraints(Module &m, nbci::Nai
                                 std::vector<piAssignment *> pis;
                                 pis = edges[pred][succ]->piAssignments;
                                 if (pis.size() == 0) {
-                                    errs() << "ERROR: pis has no assignments in eSSA::findConstraints \n";
+                                    errs() << "ERROR: pis has no assignments in ESSA::findConstraints \n";
                                     acceptConstraint = false;
                                     break;
                                 }
@@ -469,15 +469,15 @@ std::vector<GraphConstruct::CGGraph*> eSSA::findConstraints(Module &m, nbci::Nai
 } // end findConstraints
 
 
-std::string eSSA::getMappedName(std::string name, Instruction *inst) {
+std::string ESSA::getMappedName(std::string name, Instruction *inst) {
 
-	//tag on the eSSA subscript to make a string literal
+	//tag on the ESSA subscript to make a string literal
 	int subscript = varMap[inst][name]; 
 	return name + intToString(subscript);
 }
 
 
-std::string eSSA::intToString(int i) {
+std::string ESSA::intToString(int i) {
 
 	std::string s;
 	std::stringstream out;
@@ -486,7 +486,7 @@ std::string eSSA::intToString(int i) {
 	return s;
 }
 
-void eSSA::printVarMap(DomTreeNode *currNode) {
+void ESSA::printVarMap(DomTreeNode *currNode) {
 
 	BasicBlock* b = currNode->getBlock();
 	for (BasicBlock::iterator inst = b->begin(); inst != b->end(); inst++) {
@@ -500,10 +500,10 @@ void eSSA::printVarMap(DomTreeNode *currNode) {
 	}
 }
 
-void eSSA::printPiFunctions() {
+void ESSA::printPiFunctions() {
     
-    std::map<BasicBlock*, std::map<BasicBlock*, eSSAedge*> >::iterator it1; 
-	std::map<BasicBlock*, eSSAedge*>::iterator it2;
+    std::map<BasicBlock*, std::map<BasicBlock*, ESSAedge*> >::iterator it1; 
+	std::map<BasicBlock*, ESSAedge*>::iterator it2;
     
     //spit out pi functions
     for (it1 = edges.begin(); it1 != edges.end(); it1++) {
@@ -521,7 +521,7 @@ void eSSA::printPiFunctions() {
     }
 }
 
-void eSSA::outputTest(Module &m) {
+void ESSA::outputTest(Module &m) {
 
 	errs() << "\noutput test: \n";
     
@@ -573,7 +573,7 @@ void eSSA::outputTest(Module &m) {
     }	
 }
 
-Instruction* eSSA::getNextInstruction(BasicBlock *b, Instruction *i) {
+Instruction* ESSA::getNextInstruction(BasicBlock *b, Instruction *i) {
 
 	bool hitInstruction = false;
 	for (BasicBlock::iterator inst = b->begin(); inst != b->end(); inst++) {

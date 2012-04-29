@@ -11,7 +11,7 @@
 #include "BoundsCheckVisitor.h"
 
 class piAssignment;
-class eSSA;
+class ESSA;
 
 using namespace llvm;
 namespace GraphConstruct {
@@ -73,8 +73,8 @@ namespace GraphConstruct {
 
 	class CGGraph {
 		public:
-			eSSA* owner;
-			CGGraph(eSSA* owner, std::string inputFuncName);
+			ESSA* owner;
+			CGGraph(ESSA* owner, std::string inputFuncName);
 			std::vector<CGEdge*> edges;
 			std::vector<std::string> nodeNames;
 			std::string funcName;

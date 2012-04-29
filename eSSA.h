@@ -25,10 +25,10 @@
 #include "NaiveBoundsCheckInserter.h"
 
 using namespace llvm;
-class eSSAedge;
+class ESSAedge;
 class piAssignment;
 
-class eSSA {
+class ESSA {
 
 public:
 
@@ -43,14 +43,14 @@ public:
     std::vector<std::string> names;	
 
     /*
-    (pred block) -> (succ block) -> (eSSAedge*)
+    (pred block) -> (succ block) -> (ESSAedge*)
     */
-    std::map<BasicBlock*, std::map<BasicBlock*, eSSAedge*> > edges;
+    std::map<BasicBlock*, std::map<BasicBlock*, ESSAedge*> > edges;
 
 
     /*
     (branch inst) -> (cmp inst)
-    - for the branches that create eSSAedges, the compares that determine the branch
+    - for the branches that create ESSAedges, the compares that determine the branch
     */
     std::map<BranchInst*, CmpInst*> branchToCompare;
 
@@ -60,7 +60,7 @@ public:
     std::map<Instruction*, piAssignment*> checkPiAssignments;
     std::vector<CallInst*> callInstsRemoved;
     
-    eSSA(Module &m, std::string checkFuncName);
+    ESSA(Module &m, std::string checkFuncName);
     void rename(DominatorTree &DT);
     void renameVarFromNode(std::string operandName, DomTreeNode *currNode, int newSub);
     std::vector<GraphConstruct::CGGraph*> findConstraints(Module &m, nbci::NaiveBoundsCheckInserter& inputNBCI); //called from phase1CDpass
@@ -90,13 +90,13 @@ private:
 	
 };
 
-class eSSAedge {
+class ESSAedge {
 
 	public:
 	//this will hold the pi assignments in edges
 	std::vector<piAssignment *> piAssignments;
 	
-	eSSAedge() {
+	ESSAedge() {
 		//D = false;
 	};
 

@@ -9,10 +9,10 @@ namespace abcd
 	bool ESSATransformPass::runOnModule(Module &M)
 	{
 		NaiveBoundsCheckInserter &nbci = getAnalysis<NaiveBoundsCheckInserter>();
-		this->transformedIr = new eSSA(M, nbci.getCheckFuncName());
+		this->transformedIr = new ESSA(M, nbci.getCheckFuncName());
 		for (Module::iterator func = M.begin(); func != M.end(); func++) 
 		{
-			//rename variables in eSSA
+			//rename variables in ESSA
 			if (!(func->empty()|| func->isDeclaration())) 
 			{
 				this->transformedIr->rename(getAnalysis<DominatorTree>(*func));
@@ -30,7 +30,7 @@ namespace abcd
 		AU.setPreservesAll();
 	}
 
-	eSSA *ESSATransformPass::getTransformedIr()
+	ESSA *ESSATransformPass::getTransformedIr()
 	{
 		return this->transformedIr;
 	}
@@ -39,6 +39,6 @@ namespace abcd
 char abcd::ESSATransformPass::ID = 0;
 static RegisterPass<abcd::ESSATransformPass> X(
 	"essa", 
-	"CS6241 Phase2 eSSA IR transformation pass", 
+	"CS6241 Phase2 ESSA IR transformation pass", 
 	false, 
 	false);

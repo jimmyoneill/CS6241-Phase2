@@ -1,6 +1,6 @@
 
 #include "GraphComponents.h"
-#include "eSSA.h"
+#include "ESSA.h"
 
 using namespace GraphConstruct;
 using namespace llvm;
@@ -87,7 +87,7 @@ using namespace llvm;
 	* construction, this class also houses the methods for graph traversal and constraint system solving.
 	* */
 
-	CGGraph::CGGraph(eSSA* owner, std::string inputFuncName) {
+	CGGraph::CGGraph(ESSA* owner, std::string inputFuncName) {
 		this->owner = owner;
 		funcName = inputFuncName;
 	}
@@ -148,7 +148,7 @@ using namespace llvm;
 	* */
 	
 	void CGGraph::addConstraint(Instruction* inputInstr, std::vector<piAssignment*> inputPi1, std::vector<piAssignment*> inputPi2) {
-		//This is C4 - there are two vectors of piAssignments, one for each eSSA branch.
+		//This is C4 - there are two vectors of piAssignments, one for each ESSA branch.
 		//Each vector will be sizes one or two
 		
 		constraints.push_back(new CGConstraint(CGConstraint::C4, inputInstr, inputPi1, inputPi2));	

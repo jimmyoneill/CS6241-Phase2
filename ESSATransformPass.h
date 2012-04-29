@@ -1,7 +1,7 @@
 #ifndef ESSATRANSFORMPASS_H
 #define ESSATRANSFORMPASS_H
 
-#include "eSSA.h"
+#include "ESSA.h"
 #include "llvm/Pass.h"
 #include "llvm/Module.h"
 #include "llvm/Function.h"
@@ -18,13 +18,13 @@ namespace abcd
 	struct ESSATransformPass : public ModulePass
 	{
 	private:
-		eSSA *transformedIr;
+		ESSA *transformedIr;
 	public:
 		static char ID;
 		ESSATransformPass();
 		virtual bool runOnModule(Module &M);
 		void getAnalysisUsage(AnalysisUsage &AU) const;
-		eSSA *getTransformedIr();
+		ESSA *getTransformedIr();
 	};
 }
 
