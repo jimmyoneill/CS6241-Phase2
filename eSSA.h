@@ -108,10 +108,6 @@ class ESSAedge {
 	//this will hold the pi assignments in edges
 	std::vector<piAssignment *> piAssignments;
 	
-	ESSAedge() {
-		//D = false;
-	};
-
 };
 
 

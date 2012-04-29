@@ -314,8 +314,7 @@ void ESSA::renamePhiAssignments(DomTreeNode *currNode) {
 }
 
 //called from phase1CDpass
-std::vector<GraphConstruct::CGGraph*> ESSA::findConstraints(Module &m, nbci::NaiveBoundsCheckInserter& inputNBCI) {
-	//find constraints	
+std::vector<GraphConstruct::CGGraph*> ESSA::findConstraints(Module &m, nbci::NaiveBoundsCheckInserter& inputNBCI) {	
 
 	std::vector<GraphConstruct::CGGraph*> toReturn;
 
@@ -329,8 +328,11 @@ std::vector<GraphConstruct::CGGraph*> ESSA::findConstraints(Module &m, nbci::Nai
 	    for (Function::iterator b = f->begin(); b != f->end(); b++) {
     		for (BasicBlock::iterator inst = b->begin(); inst != b->end(); inst++) {
 				
-                //CONTROL FLOW
-                if (PHINode *phiNode = dyn_cast<PHINode>(inst)) {
+                /*
+                CONTROL FLOW
+                */
+                if(isa<PHINode>(inst)) {
+                    PHINode *phiNode = cast<PHINode>(inst);
                     if (phiNode->getNumIncomingValues() == 2) {
                             if (phiNode->getIncomingValue(0)->getType()->isIntegerTy() && phiNode->getIncomingValue(1)->getType()->isIntegerTy()) {
                             if (D) errs() << "got CONTROL FLOW \n";
@@ -339,8 +341,11 @@ std::vector<GraphConstruct::CGGraph*> ESSA::findConstraints(Module &m, nbci::Nai
                         }
                     }
                 }	
-                //C1 and C2
-                else if (StoreInst* storeInst = dyn_cast<StoreInst>(inst)) {
+                /*
+                C1 and C2
+                */
+                else if(isa<StoreInst>(inst)) {
+                    StoreInst* storeInst = cast<StoreInst>(inst);
                     if (storeInst->getValueOperand()->getType()->isIntegerTy()) {
                         if (storeInst->getPointerOperand()->hasName()) {
                             if (D) errs() << "inst: " << *inst << "\n"
@@ -353,7 +358,8 @@ std::vector<GraphConstruct::CGGraph*> ESSA::findConstraints(Module &m, nbci::Nai
                         }
                     }
                 }
-                else if (LoadInst* loadInst = dyn_cast<LoadInst>(inst)) {
+                else if(isa<LoadInst>(inst)) {
+                    LoadInst* loadInst = cast<LoadInst>(inst);
                     if (loadInst->getPointerOperand()->hasName()) {
                         if (D) errs() << "inst: " << *inst << "\n"
                         << "loads " << loadInst->getPointerOperand()->getName() << " into " << loadInst->getName() << "\n";
@@ -368,7 +374,8 @@ std::vector<GraphConstruct::CGGraph*> ESSA::findConstraints(Module &m, nbci::Nai
                         }
                     }
                 }
-                else if (CastInst* castInst = dyn_cast<CastInst>(inst)) {
+                else if(isa<CastInst>(inst)) {
+                    CastInst* castInst = cast<CastInst>(inst);
                     if (castInst->isIntegerCast()) {
                         if (castInst->hasName()) {
                             if (D) errs() << "GOT INT CAST\n";
@@ -380,7 +387,9 @@ std::vector<GraphConstruct::CGGraph*> ESSA::findConstraints(Module &m, nbci::Nai
                         }
                     }
                 }	
-                //C3 - has only one variable and one int
+                /*
+                C3 - has only one variable and one int
+                */
                 else if (isa<BinaryOperator>(inst)) {	    	
                     int intCount = 0;
                     int varCount = 0;
@@ -395,9 +404,11 @@ std::vector<GraphConstruct::CGGraph*> ESSA::findConstraints(Module &m, nbci::Nai
                         cggraph->addConstraint(inst);
                     }
                 }
-                //C4 - is a branch and corresponds to pi assignments			
-                else if (BranchInst *branchInst = dyn_cast<BranchInst>(&*inst)) {
-                    
+                /*
+                C4 - is a branch and corresponds to pi assignments
+                */
+                else if(isa<BranchInst>(inst)) {
+                    BranchInst *branchInst = cast<BranchInst>(&*inst);
                     if (branchInst->getNumSuccessors() == 2) {
                         bool acceptConstraint = true;
                         std::vector<piAssignment *> pis1;
@@ -406,8 +417,7 @@ std::vector<GraphConstruct::CGGraph*> ESSA::findConstraints(Module &m, nbci::Nai
                             BasicBlock* pred = branchInst->getParent();
                             BasicBlock* succ = branchInst->getSuccessor(i);					
                             if (edges[pred][succ]) {
-                                std::vector<piAssignment *> pis;
-                                pis = edges[pred][succ]->piAssignments;
+                                std::vector<piAssignment *> pis = edges[pred][succ]->piAssignments;
                                 if (pis.size() == 0) {
                                     errs() << "ERROR: pis has no assignments in ESSA::findConstraints \n";
                                     acceptConstraint = false;
@@ -429,8 +439,11 @@ std::vector<GraphConstruct::CGGraph*> ESSA::findConstraints(Module &m, nbci::Nai
                         }
                     }				
                 }
-                //C5 - is the a check function call
-                else if (CallInst *i = dyn_cast<CallInst>(inst)) {
+                /*
+                C5 - is a check function call
+                */
+                else if(isa<CallInst>(inst)) {
+                    CallInst *i = cast<CallInst>(inst);
                     //make pi assignments that correspond to checks
                     if(checkPiAssignments[inst]) {
                         if (D) errs() << "GOT C5\n";
