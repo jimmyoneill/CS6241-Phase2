@@ -13,7 +13,7 @@ void eSSA::SsaToEssa(Module &m) {
 
 	initVarMap(m);
 	initPiAssignments(m);
-    if (D) print_pi_functions();
+    if (D) printPiFunctions();
 }
 
 void eSSA::initVarMap(Module &m) {
@@ -42,20 +42,7 @@ void eSSA::initVarMap(Module &m) {
         }	    
     }
 
-	//for each instruction, set all the names to zero
-	std::vector<std::string>::iterator it;
-	for (Module::iterator f = m.begin(); f != m.end(); f++) {
-	    for (Function::iterator b = f->begin(); b != f->end(); b++) {
-            for (BasicBlock::iterator inst = b->begin(); inst != b->end(); inst++) {
-                for (size_t i = 0; i < names.size(); i++) {
-                    varMap[(Instruction*)inst][names.at(i)] = 0;
-                    if (D) errs() << names.at(i) << " -> " << varMap[(Instruction*)inst][names.at(i)] << "\n";
-                }		
-            }		
-        }	    
-    }
-
-	clear_static_var_map();
+	clearStaticVarMap();
 }
 
 void eSSA::addNameToVarMap(std::string name) {
@@ -68,10 +55,10 @@ void eSSA::addNameToVarMap(std::string name) {
 	}
 }
 
-void eSSA::clear_static_var_map() {
+void eSSA::clearStaticVarMap() {
 
 	for (size_t i = 0; i < names.size(); i++) {
-		static_var_map[names.at(i)] = 0;
+		staticVarMap[names.at(i)] = 0;
 	}	
 }
 
@@ -163,15 +150,15 @@ void eSSA::handleCheckAtPiAssignment(CallInst *inst) {
 
 void eSSA::rename(DominatorTree &DT) {
 
-	dom_tree_preorder(DT.getRootNode());
-	rename_pi_assignments(DT.getRootNode());
-	rename_phi_assignments(DT.getRootNode());
+	domTreePreorder(DT.getRootNode());
+	renamePiAssignments(DT.getRootNode());
+	renamePhiAssignments(DT.getRootNode());
 }
 
-void eSSA::dom_tree_preorder(DomTreeNode *curr_node) {
+void eSSA::domTreePreorder(DomTreeNode *currNode) {
 //do a preorder traversal of the dom tree, rename when we find pi assignments
 
-	BasicBlock *BB = curr_node->getBlock();
+	BasicBlock *BB = currNode->getBlock();
 	for (pred_iterator PI = pred_begin(BB), E = pred_end(BB); PI != E; ++PI) { 
 		
 		BasicBlock *PredBB = *PI;
@@ -181,9 +168,9 @@ void eSSA::dom_tree_preorder(DomTreeNode *curr_node) {
 			if (D) errs() << "from " << PredBB->getName() << " to " << BB->getName() << "\n";
 			for (size_t i = 0; i < pis.size(); i++) {  
 				if (D) errs() << "pi assignment operand name " << pis.at(i)->operandBaseName << "\n";
-				static_var_map[pis.at(i)->operandBaseName] += 1;
-				int newSub = static_var_map[pis.at(i)->operandBaseName];
-				renameVarFromNode(pis.at(i)->operandBaseName, curr_node, newSub);
+				staticVarMap[pis.at(i)->operandBaseName] += 1;
+				int newSub = staticVarMap[pis.at(i)->operandBaseName];
+				renameVarFromNode(pis.at(i)->operandBaseName, currNode, newSub);
 			}
 		}
 	}
@@ -192,68 +179,68 @@ void eSSA::dom_tree_preorder(DomTreeNode *curr_node) {
 	for (BasicBlock::iterator inst = BB->begin(); inst != BB->end(); inst++) {
 		if(checkPiAssignments[inst]) {
 			piAssignment *pa = checkPiAssignments[inst];
-			static_var_map[pa->operandBaseName] += 1;
-			int newSub = static_var_map[pa->operandBaseName];
-			rename_var_from_inst(pa->operandBaseName, curr_node, newSub, inst);
+			staticVarMap[pa->operandBaseName] += 1;
+			int newSub = staticVarMap[pa->operandBaseName];
+			renameVarFromInst(pa->operandBaseName, currNode, newSub, inst);
 		}		
 	}	
 
-    for(DomTreeNode::iterator child = curr_node->begin(); child != curr_node->end(); ++child) {
-		dom_tree_preorder(*child);
+    for(DomTreeNode::iterator child = currNode->begin(); child != currNode->end(); ++child) {
+		domTreePreorder(*child);
     }
 }
 
-void eSSA::renameVarFromNode(std::string operandBaseName, DomTreeNode *curr_node, int newSub) {
-//for curr_node and all of the nodes that it dominates, go through and rename the variable operandName with the subscript newSub
+void eSSA::renameVarFromNode(std::string operandBaseName, DomTreeNode *currNode, int newSub) {
+//for currNode and all of the nodes that it dominates, go through and rename the variable operandName with the subscript newSub
 
-	if (D) errs() << "renaming " << operandBaseName << " in block " << curr_node->getBlock()->getName() << "\n";
-	//varMap[curr_node->getBlock()][operandName] = newSub;
+	if (D) errs() << "renaming " << operandBaseName << " in block " << currNode->getBlock()->getName() << "\n";
+	//varMap[currNode->getBlock()][operandName] = newSub;
 
-	BasicBlock *b = curr_node->getBlock();
+	BasicBlock *b = currNode->getBlock();
 	for (BasicBlock::iterator inst = b->begin(); inst != b->end(); inst++) {
 		varMap[(Instruction*)inst][operandBaseName] = newSub;
 	}		
 
-	for(DomTreeNode::iterator child = curr_node->begin(); child != curr_node->end(); ++child) {
+	for(DomTreeNode::iterator child = currNode->begin(); child != currNode->end(); ++child) {
 		renameVarFromNode(operandBaseName, *child, newSub);
 	}
 }
 
-void eSSA::rename_var_from_inst(std::string operandBaseName, DomTreeNode *curr_node, int newSub, Instruction *instruction) {
+void eSSA::renameVarFromInst(std::string operandBaseName, DomTreeNode *currNode, int newSub, Instruction *instruction) {
 
-	bool instruction_hit = false;
-	BasicBlock *b = curr_node->getBlock();
+	bool hitInstruction = false;
+	BasicBlock *b = currNode->getBlock();
 
 	//go through the remaining instructions in the block and rename those
 	for (BasicBlock::iterator inst = b->begin(); inst != b->end(); inst++) {
 
-		if(instruction_hit) {
+		if(hitInstruction) {
 			varMap[(Instruction*)inst][operandBaseName] = newSub;
 		}
 
 		if(instruction == inst) {
 			if(D) errs() << "renaming " << operandBaseName << " from instruction:\n" << *inst << "\n";
-			instruction_hit = true;
+			hitInstruction = true;
 		}
 	}
 
 	//then rename all of the blocks that this containing block dominates
-	for(DomTreeNode::iterator child = curr_node->begin(); child != curr_node->end(); ++child) {
+	for(DomTreeNode::iterator child = currNode->begin(); child != currNode->end(); ++child) {
 		renameVarFromNode(operandBaseName, *child, newSub);
 	}	
 } 
 
-void eSSA::rename_pi_assignments(DomTreeNode *curr_node) {
+void eSSA::renamePiAssignments(DomTreeNode *currNode) {
 	
-	if (D) errs() << "rename_pi_assignments\n";
+	if (D) errs() << "renamePiAssignments\n";
 
-	BasicBlock *BB = curr_node->getBlock();
+	BasicBlock *BB = currNode->getBlock();
 	for (pred_iterator PI = pred_begin(BB), E = pred_end(BB); PI != E; ++PI) { 
 		
 		BasicBlock *PredBB = *PI;
 
 		if (PredBB == NULL || BB == NULL) {
-			errs() << "BB is NULL in rename_pi_assignments \n";
+			errs() << "BB is NULL in renamePiAssignments \n";
 		}
 		
 		if (edges[PredBB][BB] != NULL) {
@@ -282,32 +269,32 @@ void eSSA::rename_pi_assignments(DomTreeNode *curr_node) {
 			//pa->operandName = getMappedName(pa->operandName, inst);
 			pa->operandSubscript = varMap[inst][unmappedName]; 	 	
 			if (D) errs() << "to " << pa->operandSubscript << "\n";
-			if(Instruction *next = get_next_instruction(BB, inst)) {
+			if(Instruction *next = getNextInstruction(BB, inst)) {
 				//getMappedName(unmappedName, next); 
 				pa->assignedSubscript = varMap[next][unmappedName]; 
 			}
-			else errs() << "could not get next instruction in rename_pi_assignments\n";
+			else errs() << "could not get next instruction in renamePiAssignments\n";
 			if (D) errs() << "set pi assignment assigned name " << unmappedName << "\n";
 			if (D) errs() << "to " << pa->getAssignedName() << "\n";	
 		}						
 	}		
 		
-    for(DomTreeNode::iterator child = curr_node->begin(); child != curr_node->end(); ++child) {
-		rename_pi_assignments(*child);
+    for(DomTreeNode::iterator child = currNode->begin(); child != currNode->end(); ++child) {
+		renamePiAssignments(*child);
     }
 }
 
-void eSSA::rename_phi_assignments(DomTreeNode *curr_node) {
+void eSSA::renamePhiAssignments(DomTreeNode *currNode) {
 //for each phi function, change the varMap at its Instruction* to map the same to the BBs the vars came from 
-	BasicBlock *b = curr_node->getBlock();
+	BasicBlock *b = currNode->getBlock();
 	for (BasicBlock::iterator inst = b->begin(); inst != b->end(); inst++) {		
 		if (PHINode *pn = dyn_cast<PHINode>(inst)) {
 			for (size_t i = 0; i < pn->getNumIncomingValues(); ++i) {
 				Value *v = pn->getIncomingValue(i);
 				if(v->hasName()) {
 					BasicBlock *incomingBlock = pn->getIncomingBlock(i);
-					int new_sub;
-					bool in_essa_edge = false;
+					int newSub;
+					bool isInEssaEdge = false;
 					/*
 					Check if there is an eSSAedge with piAssignments. This will happen at critical edges
 					If there is, make sure that if the piAssignments renamed a variable that is 
@@ -317,9 +304,9 @@ void eSSA::rename_phi_assignments(DomTreeNode *curr_node) {
 						std::vector<piAssignment *> pis = edges[incomingBlock][b]->piAssignments;
 						for (size_t p = 0; p < pis.size(); ++p) {
 							if(v->getName().str() == pis.at(p)->assignedBaseName) {
-								in_essa_edge = true;
-								new_sub = pis.at(p)->assignedSubscript;
-								varMap[inst][v->getName().str()] = new_sub;
+								isInEssaEdge = true;
+								newSub = pis.at(p)->assignedSubscript;
+								varMap[inst][v->getName().str()] = newSub;
 								break;
 							}
 						}
@@ -328,18 +315,18 @@ void eSSA::rename_phi_assignments(DomTreeNode *curr_node) {
 					If the var wasn't present in an eSSAedge, set the mapping at the phi node to be the
 					same as the last instruction in the pred block.
 					*/
-					if (!in_essa_edge) {
-						new_sub = varMap[pn->getIncomingBlock(i)->getTerminator()][v->getName().str()];
+					if (!isInEssaEdge) {
+						newSub = varMap[pn->getIncomingBlock(i)->getTerminator()][v->getName().str()];
 						//associate the subscript with the variable at the phi node
-						varMap[inst][v->getName().str()] = new_sub;
+						varMap[inst][v->getName().str()] = newSub;
 					}
 				}
 			}	
 		}	
 	}
 
-	for(DomTreeNode::iterator child = curr_node->begin(); child != curr_node->end(); ++child) {
-		rename_pi_assignments(*child);
+	for(DomTreeNode::iterator child = currNode->begin(); child != currNode->end(); ++child) {
+		renamePiAssignments(*child);
     }
 }
 
@@ -486,11 +473,11 @@ std::string eSSA::getMappedName(std::string name, Instruction *inst) {
 
 	//tag on the eSSA subscript to make a string literal
 	int subscript = varMap[inst][name]; 
-	return name + int_to_string(subscript);
+	return name + intToString(subscript);
 }
 
 
-std::string eSSA::int_to_string(int i) {
+std::string eSSA::intToString(int i) {
 
 	std::string s;
 	std::stringstream out;
@@ -499,21 +486,21 @@ std::string eSSA::int_to_string(int i) {
 	return s;
 }
 
-void eSSA::print_var_map(DomTreeNode *curr_node) {
+void eSSA::printVarMap(DomTreeNode *currNode) {
 
-	BasicBlock* b = curr_node->getBlock();
+	BasicBlock* b = currNode->getBlock();
 	for (BasicBlock::iterator inst = b->begin(); inst != b->end(); inst++) {
 		for (size_t i = 0; i < names.size(); i++) {
 			errs() << b->getName() << " - " << names.at(i) << " - " << varMap[(Instruction*)inst][names.at(i)] << "\n";
 		}	
 	}		
 
-	for(DomTreeNode::iterator child = curr_node->begin(); child != curr_node->end(); ++child) {
-		print_var_map(*child);
+	for(DomTreeNode::iterator child = currNode->begin(); child != currNode->end(); ++child) {
+		printVarMap(*child);
 	}
 }
 
-void eSSA::print_pi_functions() {
+void eSSA::printPiFunctions() {
     
     std::map<BasicBlock*, std::map<BasicBlock*, eSSAedge*> >::iterator it1; 
 	std::map<BasicBlock*, eSSAedge*>::iterator it2;
@@ -586,12 +573,12 @@ void eSSA::outputTest(Module &m) {
     }	
 }
 
-Instruction* eSSA::get_next_instruction(BasicBlock *b, Instruction *i) {
+Instruction* eSSA::getNextInstruction(BasicBlock *b, Instruction *i) {
 
-	bool instruction_hit = false;
+	bool hitInstruction = false;
 	for (BasicBlock::iterator inst = b->begin(); inst != b->end(); inst++) {
-		if (instruction_hit) return inst;
-		if ((Instruction*)inst == i) instruction_hit = true;				
+		if (hitInstruction) return inst;
+		if ((Instruction*)inst == i) hitInstruction = true;				
 	}
 	return NULL;		
 }

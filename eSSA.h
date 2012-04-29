@@ -62,7 +62,7 @@ public:
     
     eSSA(Module &m, std::string checkFuncName);
     void rename(DominatorTree &DT);
-    void renameVarFromNode(std::string operandName, DomTreeNode *curr_node, int newSub);
+    void renameVarFromNode(std::string operandName, DomTreeNode *currNode, int newSub);
     std::vector<GraphConstruct::CGGraph*> findConstraints(Module &m, nbci::NaiveBoundsCheckInserter& inputNBCI); //called from phase1CDpass
     void outputTest(Module &m);
     std::string getMappedName(std::string name, Instruction *inst);
@@ -78,15 +78,15 @@ private:
     void handleCheckAtPiAssignment(CallInst *inst); 
     void makePiAssignmentsForBranch(BranchInst *branchInst, CmpInst *cmpInst, BasicBlock *bb);
     void addNameToVarMap(std::string name); 
-    void rename_pi_assignments(DomTreeNode *curr_node); 
-    void rename_phi_assignments(DomTreeNode *curr_node); 
-    void rename_var_from_inst(std::string operandName, DomTreeNode *curr_node, int newSub, Instruction *instruction);
-    Instruction* get_next_instruction(BasicBlock *b, Instruction *i);
-    void print_pi_functions();
-    std::string int_to_string(int i);
-    void print_var_map(DomTreeNode *curr_node);
-    void dom_tree_preorder(DomTreeNode *curr_node);
-	void clear_static_var_map(); 
+    void renamePiAssignments(DomTreeNode *currNode); 
+    void renamePhiAssignments(DomTreeNode *currNode); 
+    void renameVarFromInst(std::string operandName, DomTreeNode *currNode, int newSub, Instruction *instruction);
+    Instruction* getNextInstruction(BasicBlock *b, Instruction *i);
+    void printPiFunctions();
+    std::string intToString(int i);
+    void printVarMap(DomTreeNode *currNode);
+    void domTreePreorder(DomTreeNode *currNode);
+	void clearStaticVarMap(); 
 	
 };
 

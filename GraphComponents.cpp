@@ -210,7 +210,7 @@ using namespace llvm;
 		vector<CallInst*> toRemove;
 		for (callIt = boundsChecks.begin(); callIt != boundsChecks.end(); ++callIt) {
 
-			if(std::find(owner->call_insts_removed.begin(), owner->call_insts_removed.end(), (*callIt)) != owner->call_insts_removed.end()) 
+			if(std::find(owner->callInstsRemoved.begin(), owner->callInstsRemoved.end(), (*callIt)) != owner->callInstsRemoved.end()) 
 			{
 				continue;
 			} 
@@ -256,7 +256,7 @@ using namespace llvm;
 		{
 			CallInst *deadCall = toRemove[i];
 			deadCall->eraseFromParent();
-			owner->call_insts_removed.push_back(deadCall);
+			owner->callInstsRemoved.push_back(deadCall);
 		}
 
 		// errs() << "Total number of checks performed for function: " << totalChecked << "\n";
@@ -523,7 +523,7 @@ using namespace llvm;
 						errs() << "ERROR: BranchInst cast unsuccessful for C4 in CGGraph::constructGraph() \n";
 						return;
 					}
-					if( !(cmpInst = dyn_cast<CmpInst>(owner->br_to_cmp[branchInst])) ) {
+					if( !(cmpInst = dyn_cast<CmpInst>(owner->branchToCompare[branchInst])) ) {
 						errs() << "ERROR: CmpInst not found for C4 in CGGraph::constructGraph() \n";
 						return;
 					}
@@ -682,7 +682,7 @@ using namespace llvm;
 			}
 		} else {
 
-			std::string newName = owner->get_mapped_name(toCompare, inst); 
+			std::string newName = owner->getMappedName(toCompare, inst); 
 			return newName;
 		}
 

@@ -18,7 +18,7 @@ namespace abcd
 		ESSATransformPass &essa = getAnalysis<ESSATransformPass>();
 		NaiveBoundsCheckInserter &nbci = getAnalysis<NaiveBoundsCheckInserter>();
 
-		vector<CGGraph*> graphs = essa.getTransformedIr()->find_constraints(M, nbci);
+		vector<CGGraph*> graphs = essa.getTransformedIr()->findConstraints(M, nbci);
 	    vector<CGGraph*>::iterator graphIt;
 		CGGraph* graph;
 
