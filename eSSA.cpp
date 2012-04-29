@@ -45,12 +45,7 @@ void ESSA::initVarMap(Module &m) {
 
 void ESSA::addNameToVarMap(std::string name) {
 
-	if(std::find(names.begin(), names.end(), name) != names.end()) {
-    		// names contains the name already
-	} 
-	else {
-		names.push_back(name);
-	}
+	if(std::find(names.begin(), names.end(), name) == names.end()) names.push_back(name);
 }
 
 void ESSA::initPiAssignments(Module &m) {
