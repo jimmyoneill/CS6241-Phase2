@@ -1,0 +1,4 @@
+#!/bin/bash
+
+opt -instnamer -mem2reg -load ../../Release/lib/Phase2.dylib -essa $@ > /dev/null
+

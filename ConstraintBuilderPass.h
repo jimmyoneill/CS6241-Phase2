@@ -1,6 +1,7 @@
 #ifndef CONSTRAINTBUILDERPASS_H
 #define CONSTRAINTBUILDERPASS_H
 
+#include "eSSA.h"
 #include "llvm/Pass.h"
 #include "llvm/Module.h"
 #include "llvm/Function.h"
@@ -21,7 +22,6 @@ namespace abcd
 		ConstraintBuilderPass();
 		virtual bool runOnModule(Module &M);
 		void getAnalysisUsage(AnalysisUsage &AU) const;
-		virtual void print(raw_ostream &O, const Module *M) const;
 	};
 }
 

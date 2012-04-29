@@ -125,10 +125,10 @@ using namespace llvm;
 				constraints.push_back(new CGConstraint(CGConstraint::C2, inputInstr));  //storeInst->getValueOperand() may be a variable
 			}
 		}
-		else if (LoadInst* loadInst = dyn_cast<LoadInst>(inputInstr)) {
+		else if (isa<LoadInst>(inputInstr)) {
 			constraints.push_back(new CGConstraint(CGConstraint::C2, inputInstr));
 		}
-		else if (CastInst* castInst = dyn_cast<CastInst>(inputInstr)) {
+		else if (isa<CastInst>(inputInstr)) {
 			constraints.push_back(new CGConstraint(CGConstraint::C2, inputInstr));
 		}
 		//C3		
@@ -466,7 +466,7 @@ using namespace llvm;
 				}
 				case CGConstraint::C2:
 				{
-					if (StoreInst* storeInst = dyn_cast<StoreInst>(PP)) {
+					if (isa<StoreInst>(PP)) {
 						/*
 						operand(0) = constant int or variable of int type
 						operand(1)  = var being stored into
@@ -475,7 +475,7 @@ using namespace llvm;
 						secondNode = getNode(getNameFromValue(PP->getOperand(1), PP));
 						firstNode->connectTo(secondNode, 0);
 					}
-					else if (LoadInst* loadInst = dyn_cast<LoadInst>(PP)) {
+					else if (isa<LoadInst>(PP)) {
 						/*
 						operand(0) = pointer being loaded from
 						(Value*)PP  = var being loaded into
@@ -484,7 +484,7 @@ using namespace llvm;
 						secondNode = getNode(getNameFromValue(PP, PP));
 						firstNode->connectTo(secondNode, 0);
 					}
-					else if (CastInst* castInst = dyn_cast<CastInst>(PP)) {
+					else if (isa<CastInst>(PP)) {
 						/*
 						operand(0) = var being casted 
 						(Value*)PP  = var getting the result of the cast
