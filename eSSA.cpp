@@ -6,10 +6,10 @@ ESSA::ESSA(Module &m, std::string checkFuncName) {
 
 	D = false;
 	this->checkFuncName = checkFuncName;
-	SsaToEssa(m);    	
+	ssaToEssa(m);    	
 } 
 
-void ESSA::SsaToEssa(Module &m) {
+void ESSA::ssaToEssa(Module &m) {
 
 	initVarMap(m);
 	initPiAssignments(m);
@@ -41,8 +41,6 @@ void ESSA::initVarMap(Module &m) {
             }		
         }	    
     }
-
-	clearStaticVarMap();
 }
 
 void ESSA::addNameToVarMap(std::string name) {
@@ -53,13 +51,6 @@ void ESSA::addNameToVarMap(std::string name) {
 	else {
 		names.push_back(name);
 	}
-}
-
-void ESSA::clearStaticVarMap() {
-
-	for (size_t i = 0; i < names.size(); i++) {
-		staticVarMap[names.at(i)] = 0;
-	}	
 }
 
 void ESSA::initPiAssignments(Module &m) {
@@ -137,15 +128,12 @@ void ESSA::makePiAssignmentsForBranch(BranchInst *branchInst, CmpInst *cmpInst, 
 
 void ESSA::handleCheckAtPiAssignment(CallInst *inst) {
 
-	std::string name;
-
 	//get name of first argument - the variable to be checked
-	name = inst->getArgOperand(0)->getName().str();
+    std::string name = inst->getArgOperand(0)->getName().str();
 	
 	if (D) errs() << "making pi assignment for name " << name << "\n";
 	if (D) errs() << "at instruction " << *inst << "\n";
-	piAssignment *pa = new piAssignment(name);
-	checkPiAssignments[inst] = pa;
+	checkPiAssignments[inst] = new piAssignment(name);
 }
 
 void ESSA::rename(DominatorTree &DT) {

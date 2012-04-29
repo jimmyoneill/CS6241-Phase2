@@ -32,46 +32,57 @@ class ESSA {
 
 public:
 
+    /* boolean for debug output */
     bool D;
-
-    /*
-    (BB*) -> (variable name) -> (rename stack depth)
-    - MUST BE RESET FOR EACH FUNCTION BECAUSE OF VARIABLE NAMESPACES
-    */
-    std::map<Instruction*, std::map<std::string, int> > varMap;
-    std::map<std::string, int> staticVarMap;
-    std::vector<std::string> names;	
-
-    /*
-    (pred block) -> (succ block) -> (ESSAedge*)
-    */
-    std::map<BasicBlock*, std::map<BasicBlock*, ESSAedge*> > edges;
-
+    
+    ESSA(Module &m, std::string checkFuncName);
 
     /*
     (branch inst) -> (cmp inst)
     - for the branches that create ESSAedges, the compares that determine the branch
     */
     std::map<BranchInst*, CmpInst*> branchToCompare;
-
-    /*
-    (check instruction) -> (piAssignment)	
+    
+    /* contains the CallInsts to the check function that are removed
+    for the graph solver to check against 
     */
-    std::map<Instruction*, piAssignment*> checkPiAssignments;
     std::vector<CallInst*> callInstsRemoved;
     
-    ESSA(Module &m, std::string checkFuncName);
+    /* called from the ESSATransformPass at each function */
     void rename(DominatorTree &DT);
-    void renameVarFromNode(std::string operandName, DomTreeNode *currNode, int newSub);
+    
+    /* called from the ConstraintBuilderPass at each function */
     std::vector<GraphConstruct::CGGraph*> findConstraints(Module &m, nbci::NaiveBoundsCheckInserter& inputNBCI); //called from phase1CDpass
-    void outputTest(Module &m);
+    
+    /* called from the graph solver */
     std::string getMappedName(std::string name, Instruction *inst);
 	
     
 private:
+    
+    /*
+     (BB*) -> (variable name) -> (rename stack depth)
+     - MUST BE RESET FOR EACH FUNCTION BECAUSE OF VARIABLE NAMESPACES
+     */
+    std::map<Instruction*, std::map<std::string, int> > varMap;
 	
+    /* used to aid varMap construction */
+    std::map<std::string, int> staticVarMap;
+    
+    /*
+     (pred block) -> (succ block) -> (ESSAedge*)
+     */
+    std::map<BasicBlock*, std::map<BasicBlock*, ESSAedge*> > edges;
+    
+    /*
+     (check instruction) -> (piAssignment)	
+     */
+    std::map<Instruction*, piAssignment*> checkPiAssignments;
+    
+    std::vector<std::string> names;	
     std::string checkFuncName;
-    void SsaToEssa(Module &m);
+    
+    void ssaToEssa(Module &m);
     void initVarMap(Module &m);
     void initPiAssignments(Module &m);
     void handleBranchAtPiAssignment(BranchInst *branchInst, BasicBlock *bb);  
@@ -81,12 +92,13 @@ private:
     void renamePiAssignments(DomTreeNode *currNode); 
     void renamePhiAssignments(DomTreeNode *currNode); 
     void renameVarFromInst(std::string operandName, DomTreeNode *currNode, int newSub, Instruction *instruction);
+    void renameVarFromNode(std::string operandName, DomTreeNode *currNode, int newSub);
     Instruction* getNextInstruction(BasicBlock *b, Instruction *i);
     void printPiFunctions();
     std::string intToString(int i);
     void printVarMap(DomTreeNode *currNode);
     void domTreePreorder(DomTreeNode *currNode);
-	void clearStaticVarMap(); 
+    void outputTest(Module &m);
 	
 };
 
