@@ -14,7 +14,22 @@ namespace patterns
 				// HACK
 				if(idx->getType()->isIntegerTy(64))
 				{
-					return new ArrayAccess(gepInst, findAllocaInst(gepInst), idx, length);
+					int dim = 1;
+					GetElementPtrInst *current = gepInst;
+					while(current != NULL)
+					{
+						if(AllocaInst *allocInst = dyn_cast<AllocaInst>(current->getPointerOperand()))
+						{
+							// Return the allocating instruction.
+							return new ArrayAccess(gepInst, allocInst, dim, idx, length);
+						}
+						else
+						{
+							// We're stuck in a chain of GEPs
+							current = dyn_cast<GetElementPtrInst>(current->getPointerOperand());
+							dim++;
+						}
+					}
 				}
 			}
 		}

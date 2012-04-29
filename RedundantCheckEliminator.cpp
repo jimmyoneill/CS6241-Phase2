@@ -6,9 +6,9 @@ using namespace std;
 
 namespace patterns
 {
-	void RedundantCheckEliminator::process(BasicBlock *B, AccessMap accessMap)
+	void RedundantCheckEliminator::getRedundantCheckCalls(BasicBlock *B, AccessMap accessMap, vector<CallInst*> redundantChks)
 	{
-		vector<CallInst*> subsumedChks;
+		//vector<CallInst*> redundantChks;
 
 		// Basic block local only
 		for(BasicBlock::iterator bi = B->begin(); bi != B->end(); bi++)
@@ -19,7 +19,7 @@ namespace patterns
 
 			if((currentCheck = dyn_cast<CallInst>(bi)) != NULL &&
 			   (currentAccess = accessMap[currentCheck]) != NULL &&
-			   !contains(&subsumedChks, currentCheck))
+			   !contains(&redundantChks, currentCheck))
 			{
 				// Now search from end to here of the BB for other checks.
 				// This is a HACK, but LLVM doesn't allow iterator arithmatic
@@ -28,10 +28,14 @@ namespace patterns
 				{
 					if((nextCheck = dyn_cast<CallInst>(search)) != NULL &&
 					   (nextAccess = accessMap[nextCheck]) != NULL &&
-					   !contains(&subsumedChks, nextCheck) &&
+					   !contains(&redundantChks, nextCheck) &&
 					   subsumes(currentAccess, nextAccess, stores))
 					{
-						subsumedChks.push_back(nextCheck);
+						//errs() << "Check is redundant!\n";
+						//errs() << "--------------------------------------\n";
+						//nextCheck->dump();
+						//errs() << "--------------------------------------\n";
+						redundantChks.push_back(nextCheck);
 					}
 					else if (StoreInst *store = dyn_cast<StoreInst>(search))
 					{
@@ -44,14 +48,6 @@ namespace patterns
 				stores.clear();
 			}
 		}
-
-		// remove all subsumed checks
-		for(vector<CallInst*>::iterator i = subsumedChks.begin(); i != subsumedChks.end(); i++)
-		{
-			(*i)->eraseFromParent();
-		}
-
-		errs() << "Redundant checks removed.";
 	}
 
 	bool RedundantCheckEliminator::contains(vector<CallInst*> *vector, CallInst *inst)
@@ -61,8 +57,33 @@ namespace patterns
 			   find(vector->begin(), vector->end(), inst) != vector->end();
 	}
 
-	bool RedundantCheckEliminator::subsumes(ArrayAccess *base, ArrayAccess *target, vector<StoreInst*> store)
+	bool RedundantCheckEliminator::subsumes(ArrayAccess *base, ArrayAccess *target, vector<StoreInst*> stores)
 	{
-		return true;
+		if(base == NULL || target == NULL)
+		{
+			return false;
+		}
+
+		/* 
+		 * First, check to see if the base and target array accesses are the same.
+		 * Equiavalence here refers to the following:
+		 *   1. Dimensions are the same.
+		 *   2. Target allocated arrays are the same. 
+		 *   3. Indices refer to the same variable. 
+		 *
+		 * Next, check to see if the indices have changed in between the two accesses.
+		 * If one of them has, then the first check will never subsume the second.
+		 */
+
+
+		//base->dump(errs());
+		//target->dump(errs());
+		return base->equals(*target) && !hasIndexChanged(base->getIndex(), stores);
+	}
+
+	bool RedundantCheckEliminator::hasIndexChanged(Value *value, vector<StoreInst*> stores)
+	{
+		//errs() << "Has index changed? " << false << "\n";
+		return false;
 	}
 }

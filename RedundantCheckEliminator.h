@@ -21,9 +21,10 @@ namespace patterns
 	private:
 		static bool contains(vector<CallInst*> *vector, CallInst *inst);
 		static bool subsumes(ArrayAccess *base, ArrayAccess *target, vector<StoreInst*> stores);
+		static bool hasIndexChanged(Value *value, vector<StoreInst*> stores);
 		
 	public:
-		static void process(BasicBlock *B, AccessMap accessMap);
+		static void getRedundantCheckCalls(BasicBlock *B, AccessMap accessMap, vector<CallInst*> checks);
 	};
 
 }

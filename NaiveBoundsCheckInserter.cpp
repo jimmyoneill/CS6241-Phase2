@@ -47,6 +47,8 @@ namespace nbci {
 		printArrayAccessMap(O);
 		O << "=============================== Checks ==============================\n";
 		printChecks(O);
+		O << "=================== Redundant Check Elimination =====================\n";
+		O << "Total number of checks eliminated: " << this->visitor->getNumEliminatedChecks() << "\n";
 		O << "=====================================================================\n";
 	}
 

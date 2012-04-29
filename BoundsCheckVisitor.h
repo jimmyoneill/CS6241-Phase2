@@ -19,6 +19,7 @@ namespace patterns
 	{
 	private:
 	    bool changed;
+	    int eliminatedChecks;
 	    Module *module;
 	    AccessMap accessMap;
 	    CheckCalls checkCalls;
@@ -31,9 +32,12 @@ namespace patterns
 	    virtual void visitGetElementPtrInst(GetElementPtrInst *inst);
 	    AccessMap getArrayAccessMap();
 	    CheckCalls getAllCheckCalls();
+	    int getNumEliminatedChecks();
 	    BoundsCheckCodeGenerator *getCodeGenerator();
 
 	};
+
+	static bool REDUNDANT_CHECK_ELIMINATION = false;
 }
 
 #endif

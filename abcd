@@ -1,4 +1,4 @@
 #!/bin/bash
 
-opt -O3 -instnamer -mem2reg -load ../../Release/lib/Phase2.dylib -abcd $@ > /dev/null
+opt -instnamer -mem2reg -load ../../Release/lib/Phase2.dylib -abcd $@ > /dev/null
 
