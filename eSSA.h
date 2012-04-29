@@ -89,6 +89,7 @@ private:
 	void rename_phi_assignments(DomTreeNode *curr_node); 
 	void rename_var_from_inst(std::string operandName, DomTreeNode *curr_node, int newSub, Instruction *instruction);
 	Instruction* get_next_instruction(BasicBlock *b, Instruction *i);
+    void print_pi_functions();
 	
 };
 

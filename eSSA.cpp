@@ -13,27 +13,7 @@ void eSSA::SSA_to_eSSA(Module &m) {
 
 	init_var_map(m);
 	init_pi_assignments(m);
-
-	std::map<BasicBlock*, std::map<BasicBlock*, eSSAedge*> >::iterator it1; //ugly as hell - typedef later
-	std::map<BasicBlock*, eSSAedge*>::iterator it2;
-
-	//spit out pi functions
-	if (D) {
-        for (it1 = edges.begin(); it1 != edges.end(); it1++) {
-            for (it2 = edges[it1->first].begin(); it2 != edges[it1->first].end(); it2++) {
-                std::vector<piAssignment *> pis = edges[it1->first][it2->first]->piAssignments;
-
-
-                if (pis.size() > 0) {
-                    errs() << "pi funcs generated from " << it1->first->getName() 
-                        << " to " << it2->first->getName() << "\n";
-                }
-                for (size_t i = 0; i < pis.size(); i++) {
-                    errs() << "pi assignment operand name " << pis.at(i)->operandBaseName << "\n";
-                }
-            }
-        }
-	}
+    if (D) print_pi_functions();
 }
 
 void eSSA::init_var_map(Module &m) {
@@ -60,7 +40,7 @@ void eSSA::init_var_map(Module &m) {
                 }			
             }		
         }	    
-	}
+    }
 
 	//for each instruction, set all the names to zero
 	std::vector<std::string>::iterator it;
@@ -69,11 +49,11 @@ void eSSA::init_var_map(Module &m) {
             for (BasicBlock::iterator inst = b->begin(); inst != b->end(); inst++) {
                 for (size_t i = 0; i < names.size(); i++) {
                     var_map[(Instruction*)inst][names.at(i)] = 0;
-                //errs() << names.at(i) << " -> " << var_map[(Instruction*)inst][names.at(i)] << "\n";
+                    if (D) errs() << names.at(i) << " -> " << var_map[(Instruction*)inst][names.at(i)] << "\n";
                 }		
             }		
         }	    
-	}
+    }
 
 	clear_static_var_map();
 }
@@ -120,7 +100,7 @@ void eSSA::init_pi_assignments(Module &m) {
                 }			
             }		
         }	    
-	}	
+    }	
 }
 
 void eSSA::handle_br_pi_assignment(BranchInst *branchInst, BasicBlock *bb) {
@@ -537,6 +517,27 @@ void eSSA::print_var_map(DomTreeNode *curr_node) {
 	}
 }
 
+void eSSA::print_pi_functions() {
+    
+    std::map<BasicBlock*, std::map<BasicBlock*, eSSAedge*> >::iterator it1; 
+	std::map<BasicBlock*, eSSAedge*>::iterator it2;
+    
+    //spit out pi functions
+    for (it1 = edges.begin(); it1 != edges.end(); it1++) {
+        for (it2 = edges[it1->first].begin(); it2 != edges[it1->first].end(); it2++) {
+            std::vector<piAssignment *> pis = edges[it1->first][it2->first]->piAssignments;
+            
+            if (pis.size() > 0) {
+                errs() << "pi funcs generated from " << it1->first->getName() 
+                << " to " << it2->first->getName() << "\n";
+            }
+            for (size_t i = 0; i < pis.size(); i++) {
+                errs() << "pi assignment operand name " << pis.at(i)->operandBaseName << "\n";
+            }
+        }
+    }
+}
+
 void eSSA::output_test(Module &m) {
 
 	errs() << "\noutput test: \n";
@@ -586,7 +587,7 @@ void eSSA::output_test(Module &m) {
                 }		
             }	
         }	    
-	}	
+    }	
 }
 
 Instruction* eSSA::get_next_instruction(BasicBlock *b, Instruction *i) {
