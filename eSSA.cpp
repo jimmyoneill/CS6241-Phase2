@@ -13,27 +13,7 @@ void eSSA::SSA_to_eSSA(Module &m) {
 
 	init_var_map(m);
 	init_pi_assignments(m);
-
-	std::map<BasicBlock*, std::map<BasicBlock*, eSSAedge*> >::iterator it1; //ugly as hell - typedef later
-	std::map<BasicBlock*, eSSAedge*>::iterator it2;
-
-	//spit out pi functions
-	if (D) {
-	for (it1 = edges.begin(); it1 != edges.end(); it1++) {
-		for (it2 = edges[it1->first].begin(); it2 != edges[it1->first].end(); it2++) {
-			std::vector<piAssignment *> pis = edges[it1->first][it2->first]->piAssignments;
-
-
-			if (pis.size() > 0) {
-				errs() << "pi funcs generated from " << it1->first->getName() 
-					<< " to " << it2->first->getName() << "\n";
-			}
-			for (size_t i = 0; i < pis.size(); i++) {
-				errs() << "pi assignment operand name " << pis.at(i)->operandBaseName << "\n";
-			}
-		}
-	}
-	}
+    if (D) print_pi_functions();
 }
 
 void eSSA::init_var_map(Module &m) {
@@ -55,15 +35,14 @@ void eSSA::init_var_map(Module &m) {
 
 	    for (Function::iterator b = f->begin(); b != f->end(); b++) {
     		for (BasicBlock::iterator inst = b->begin(); inst != b->end(); inst++) {
-			if (inst->hasName()) {
-				add_name_to_var_map(inst->getName().str());
-			}			
-		}		
-    	    }	    
-	}
+                if (inst->hasName()) {
+                    add_name_to_var_map(inst->getName().str());
+                }			
+            }		
+        }	    
+    }
 
 	clear_static_var_map();
-
 }
 
 void eSSA::add_name_to_var_map(std::string name) {
@@ -74,8 +53,6 @@ void eSSA::add_name_to_var_map(std::string name) {
 	else {
 		names.push_back(name);
 	}
-
-
 }
 
 void eSSA::clear_static_var_map() {
@@ -83,8 +60,6 @@ void eSSA::clear_static_var_map() {
 	for (size_t i = 0; i < names.size(); i++) {
 		static_var_map[names.at(i)] = 0;
 	}	
-
-
 }
 
 void eSSA::init_pi_assignments(Module &m) {
@@ -94,28 +69,25 @@ void eSSA::init_pi_assignments(Module &m) {
 	for (Module::iterator f = m.begin(); f != m.end(); f++) {
 	    for (Function::iterator b = f->begin(); b != f->end(); b++) {
     		for (BasicBlock::iterator inst = b->begin(); inst != b->end(); inst++) {
+                if (BranchInst *branchInst = dyn_cast<BranchInst>(&*inst)) {
+                    //make pi assignments/edges that correspond to branch
+                    handle_br_pi_assignment(branchInst, b);
+                }
 
-	
-			if (BranchInst *branchInst = dyn_cast<BranchInst>(&*inst)) {
-				//make pi assignments/edges that correspond to branch
-                		handle_br_pi_assignment(branchInst, b);
-            		}
-
-	    		if (CallInst *i = dyn_cast<CallInst>(inst)) {
-				//make pi assignments that correspond to checks
-
-				Function* calledFunc = i->getCalledFunction();
-				if (calledFunc) {
-			    		//calls to external functions outside the compilation unit will be null here
-			    		if (calledFunc->getName() == check_func_name) {
-						//make pi assignment 
-						handle_check_pi_assignment(i);
-			    		}
-				}			
-    		    	}			
-		}		
-    	    }	    
-	}	
+                if (CallInst *i = dyn_cast<CallInst>(inst)) {
+                    //make pi assignments that correspond to checks
+                    Function* calledFunc = i->getCalledFunction();
+                    if (calledFunc) {
+                        //calls to external functions outside the compilation unit will be null here
+                        if (calledFunc->getName() == check_func_name) {
+                        //make pi assignment 
+                        handle_check_pi_assignment(i);
+                        }
+                    }			
+                }			
+            }		
+        }	    
+    }	
 }
 
 void eSSA::handle_br_pi_assignment(BranchInst *branchInst, BasicBlock *bb) {
@@ -123,24 +95,24 @@ void eSSA::handle_br_pi_assignment(BranchInst *branchInst, BasicBlock *bb) {
 	//prune BB and make pi assignment
     if (branchInst->isConditional()) {
 
-	if (D) errs() << "condition: " << branchInst->getCondition()->getName() << "\n";
-	std::string conditionalName = branchInst->getCondition()->getName().str();
-	//backtrack and find the compare statement that defines this name
-	
-	for (BasicBlock::iterator inst = bb->begin(); inst != bb->end(); inst++) {
-		if (CmpInst *cmpInst = dyn_cast<CmpInst>(&*inst)) {
-			if  (cmpInst->getName().str() == conditionalName) {
-				if (cmpInst->isIntPredicate()) {
-					CmpInst::Predicate pred = cmpInst->getPredicate();
-					if ( (pred >= CmpInst::ICMP_SGT) && (pred <= CmpInst::ICMP_SLE) ) {
-						if (D) errs() << "making pi assignment info for condition " << conditionalName << "\n";
-						br_to_cmp[branchInst] = cmpInst;
-						make_pi_assignments_for_br(branchInst, cmpInst, bb);
-					}
-				}
-			}
-            	}
-	}
+        if (D) errs() << "condition: " << branchInst->getCondition()->getName() << "\n";
+        std::string conditionalName = branchInst->getCondition()->getName().str();
+        //backtrack and find the compare statement that defines this name
+        
+        for (BasicBlock::iterator inst = bb->begin(); inst != bb->end(); inst++) {
+            if (CmpInst *cmpInst = dyn_cast<CmpInst>(&*inst)) {
+                if  (cmpInst->getName().str() == conditionalName) {
+                    if (cmpInst->isIntPredicate()) {
+                        CmpInst::Predicate pred = cmpInst->getPredicate();
+                        if ( (pred >= CmpInst::ICMP_SGT) && (pred <= CmpInst::ICMP_SLE) ) {
+                            if (D) errs() << "making pi assignment info for condition " << conditionalName << "\n";
+                            br_to_cmp[branchInst] = cmpInst;
+                            make_pi_assignments_for_br(branchInst, cmpInst, bb);
+                        }
+                    }
+                }
+            }
+        }
     }	
 }
 
@@ -154,13 +126,9 @@ void eSSA::make_pi_assignments_for_br(BranchInst *branchInst, CmpInst *cmpInst, 
 
 		for (User::op_iterator op = cmpInst->op_begin(); op != cmpInst->op_end(); op++) {
 			if (op->get()->hasName()) {
-			    	//errs() << op->get()->getName() << " - ";
+                if (D) errs() << op->get()->getName() << " - ";
 				edge->piAssignments.push_back( new piAssignment(op->get()->getName().str()) );
 			} 
-
-			// if (ConstantInt *constInt = dyn_cast<ConstantInt>(&*op->get())) {
-			//     //this will play a role in contraints, but not in pi assignments
-			// }
 		}
 		//add the eSSAedge instance to the edges member
 		edges[bb][branchInst->getSuccessor(i)] = edge;
@@ -185,7 +153,6 @@ void eSSA::rename(DominatorTree &DT) {
 	dom_tree_preorder(DT.getRootNode());
 	rename_pi_assignments(DT.getRootNode());
 	rename_phi_assignments(DT.getRootNode());
-
 }
 
 void eSSA::dom_tree_preorder(DomTreeNode *curr_node) {
@@ -218,9 +185,9 @@ void eSSA::dom_tree_preorder(DomTreeNode *curr_node) {
 		}		
 	}	
 
-        for(DomTreeNode::iterator child = curr_node->begin(); child != curr_node->end(); ++child) {
+    for(DomTreeNode::iterator child = curr_node->begin(); child != curr_node->end(); ++child) {
 		dom_tree_preorder(*child);
-        }
+    }
 }
 
 void eSSA::rename_var_from_node(std::string operandBaseName, DomTreeNode *curr_node, int newSub) {
@@ -312,9 +279,9 @@ void eSSA::rename_pi_assignments(DomTreeNode *curr_node) {
 		}						
 	}		
 		
-        for(DomTreeNode::iterator child = curr_node->begin(); child != curr_node->end(); ++child) {
+    for(DomTreeNode::iterator child = curr_node->begin(); child != curr_node->end(); ++child) {
 		rename_pi_assignments(*child);
-        }
+    }
 }
 
 void eSSA::rename_phi_assignments(DomTreeNode *curr_node) {
@@ -360,7 +327,7 @@ void eSSA::rename_phi_assignments(DomTreeNode *curr_node) {
 
 	for(DomTreeNode::iterator child = curr_node->begin(); child != curr_node->end(); ++child) {
 		rename_pi_assignments(*child);
-        }
+    }
 }
 
 void eSSA::make_branch_conditionals(BranchInst *branchInst, CmpInst *cmpInst, BasicBlock *bb) {
@@ -538,50 +505,77 @@ void eSSA::print_var_map(DomTreeNode *curr_node) {
 	}
 }
 
+void eSSA::print_pi_functions() {
+    
+    std::map<BasicBlock*, std::map<BasicBlock*, eSSAedge*> >::iterator it1; 
+	std::map<BasicBlock*, eSSAedge*>::iterator it2;
+    
+    //spit out pi functions
+    for (it1 = edges.begin(); it1 != edges.end(); it1++) {
+        for (it2 = edges[it1->first].begin(); it2 != edges[it1->first].end(); it2++) {
+            std::vector<piAssignment *> pis = edges[it1->first][it2->first]->piAssignments;
+            
+            if (pis.size() > 0) {
+                errs() << "pi funcs generated from " << it1->first->getName() 
+                << " to " << it2->first->getName() << "\n";
+            }
+            for (size_t i = 0; i < pis.size(); i++) {
+                errs() << "pi assignment operand name " << pis.at(i)->operandBaseName << "\n";
+            }
+        }
+    }
+}
+
 void eSSA::output_test(Module &m) {
 
 	errs() << "\noutput test: \n";
+    
 	for (Module::iterator f = m.begin(); f != m.end(); f++) {
 		errs() << "\nFUNCTION: " << f->getName() << "\n";
+        
 		for (Function::iterator b = f->begin(); b != f->end(); b++) {
 			errs() << "\nBLOCK: " << b->getName() << "\n";
-    			for (BasicBlock::iterator inst = b->begin(); inst != b->end(); inst++) {
-				errs() << *inst << "\n";
-				errs() << "mapped vars  ";
-				for (User::op_iterator op = inst->op_begin(); op != inst->op_end(); op++) {
-					if (op->get()->hasName()) {
-						std::string name = op->get()->getName(); 
-			    			errs() << " - " << get_mapped_name(name, inst);
-					} 
-				}
-				errs() << "\n";	
-				if(check_pi_assignments[inst]) {
-					piAssignment *pa = check_pi_assignments[inst];
-					errs() << "PI ASSIGNMENT: " << pa->getAssignedName() << " = " << pa->getOperandName() << "\n";
-				}
+            
+            for (BasicBlock::iterator inst = b->begin(); inst != b->end(); inst++) {
+                errs() << *inst << "\n";
+                errs() << "mapped vars  ";
+                    
+                for (User::op_iterator op = inst->op_begin(); op != inst->op_end(); op++) {
+                    if (op->get()->hasName()) {
+                        std::string name = op->get()->getName(); 
+                            errs() << " - " << get_mapped_name(name, inst);
+                    } 
+                }
+                errs() << "\n";	
+                    
+                if(check_pi_assignments[inst]) {
+                    piAssignment *pa = check_pi_assignments[inst];
+                    errs() << "PI ASSIGNMENT: " << pa->getAssignedName() << " = " << pa->getOperandName() << "\n";
+                }
 
-				if (BranchInst *branchInst = dyn_cast<BranchInst>(&*inst)) {
+                if (BranchInst *branchInst = dyn_cast<BranchInst>(&*inst)) {
 
-					for (size_t i = 0; i < branchInst->getNumSuccessors(); i++) {
-						BasicBlock* pred = branchInst->getParent();
-						BasicBlock* succ = branchInst->getSuccessor(i);						
-						if (edges[pred][succ]) {
-							errs() << "PI ASSIGNMENT(S) ON EDGE TO: " 
-							<< branchInst->getSuccessor(i)->getName() << "\n";
+                    for (size_t i = 0; i < branchInst->getNumSuccessors(); i++) {
+                        BasicBlock* pred = branchInst->getParent();
+                        BasicBlock* succ = branchInst->getSuccessor(i);			
+                        
+                        if (edges[pred][succ]) {
+                            errs() << "PI ASSIGNMENT(S) ON EDGE TO: " 
+                            << branchInst->getSuccessor(i)->getName() << "\n";
 
-							std::vector<piAssignment *> pis;
-							pis = edges[pred][succ]->piAssignments;
-							for (size_t i = 0; i< pis.size(); ++i) {
-								piAssignment *pa = pis.at(i);
-								errs() << "PI ASSIGNMENT: " << pa->getAssignedName() 
-								<< " = " << pa->getOperandName() << "\n";
-							}
-						}
-					}
-				}		
-			}	
-    		}	    
-	}	
+                            std::vector<piAssignment *> pis;
+                            pis = edges[pred][succ]->piAssignments;
+                            for (size_t i = 0; i< pis.size(); ++i) {
+                                piAssignment *pa = pis.at(i);
+                                errs() << "PI ASSIGNMENT: " << pa->getAssignedName() 
+                                << " = " << pa->getOperandName() << "\n";
+                            }
+                        }
+                    }
+                }		
+            }	
+        }	    
+    }	
 }
 
 Instruction* eSSA::get_next_instruction(BasicBlock *b, Instruction *i) {
