@@ -1,0 +1,1 @@
+opt -instnamer -mem2reg -load ../../Release/lib/Phase2.dylib -abcd -time-passes $@ > /dev/null
