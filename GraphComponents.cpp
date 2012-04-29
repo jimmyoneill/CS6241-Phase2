@@ -89,6 +89,8 @@ using namespace llvm;
 
 	CGGraph::CGGraph(ESSA* owner, std::string inputFuncName) {
 		this->owner = owner;
+		totalChecked = 0;
+		totalRemoved = 0;
 		funcName = inputFuncName;
 	}
 	
@@ -203,9 +205,6 @@ using namespace llvm;
 		std::string varOne;
 		std::string varTwo;
 		bool rCheck;
-
-		int totalChecked = 0;
-		int totalRemoved = 0;
 
 		vector<CallInst*> toRemove;
 		for (callIt = boundsChecks.begin(); callIt != boundsChecks.end(); ++callIt) {

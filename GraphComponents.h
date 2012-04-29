@@ -74,6 +74,8 @@ namespace GraphConstruct {
 	class CGGraph {
 		public:
 			ESSA* owner;
+			int totalChecked;
+			int totalRemoved;
 			CGGraph(ESSA* owner, std::string inputFuncName);
 			std::vector<CGEdge*> edges;
 			std::vector<std::string> nodeNames;

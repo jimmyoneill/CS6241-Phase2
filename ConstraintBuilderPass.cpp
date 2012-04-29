@@ -36,6 +36,7 @@ namespace abcd
             }
         }
         */
+	int totalChecks = 0;
         
 		ESSATransformPass &essa = getAnalysis<ESSATransformPass>();
 		NaiveBoundsCheckInserter &nbci = getAnalysis<NaiveBoundsCheckInserter>();
@@ -48,8 +49,10 @@ namespace abcd
 		{
 			graph = *graphIt;
 			this->removed += (*graphIt)->solve(nbci.getBoundsCheckVisitor()->getAllCheckCalls());
+			totalChecks += (*graphIt)->totalChecked;
 		}
 
+		errs() << "Total number of checks: " << totalChecks << "\n";
 		errs() << "Total number of checks removed: " << this->removed << "\n";
          
 		return this->removed > 0;

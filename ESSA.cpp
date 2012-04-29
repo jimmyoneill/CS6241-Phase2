@@ -419,7 +419,7 @@ std::vector<GraphConstruct::CGGraph*> ESSA::findConstraints(Module &m, nbci::Nai
                             if (edges[pred][succ]) {
                                 std::vector<piAssignment *> pis = edges[pred][succ]->piAssignments;
                                 if (pis.size() == 0) {
-                                    errs() << "ERROR: pis has no assignments in ESSA::findConstraints \n";
+                                    //errs() << "ERROR: pis has no assignments in ESSA::findConstraints \n";
                                     acceptConstraint = false;
                                     break;
                                 }
