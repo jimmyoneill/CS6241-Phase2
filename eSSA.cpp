@@ -4,7 +4,7 @@
 
 eSSA::eSSA(Module &m, std::string check_func_name) {
 
-	D = true;
+	D = false;
 	this->check_func_name = check_func_name;
 	SSA_to_eSSA(m);    	
 } 
@@ -60,19 +60,6 @@ void eSSA::init_var_map(Module &m) {
 			}			
 		}		
     	    }	    
-	}
-
-	//for each instruction, set all the names to zero
-	std::vector<std::string>::iterator it;
-	for (Module::iterator f = m.begin(); f != m.end(); f++) {
-	    for (Function::iterator b = f->begin(); b != f->end(); b++) {
-		for (BasicBlock::iterator inst = b->begin(); inst != b->end(); inst++) {
-			for (size_t i = 0; i < names.size(); i++) {
-				var_map[(Instruction*)inst][names.at(i)] = 0;
-			//errs() << names.at(i) << " -> " << var_map[(Instruction*)inst][names.at(i)] << "\n";
-			}		
-		}		
-       	    }	    
 	}
 
 	clear_static_var_map();
@@ -388,7 +375,7 @@ std::vector<GraphConstruct::CGGraph*> eSSA::find_constraints(Module &m, nbci::Na
 
 	for (Module::iterator f = m.begin(); f != m.end(); f++) {
 
-		if(1) errs() << "\n------------- making CGGraph for function named " << f->getName() << "\n\n";
+		if(D) errs() << "\n------------- making CGGraph for function named " << f->getName() << "\n\n";
 		GraphConstruct::CGGraph *cggraph = new GraphConstruct::CGGraph(this, f->getName().str());
 
 		cggraph->addArrayLengths(inputNBCI.getBoundsCheckVisitor()->getArrayAccessMap());
@@ -507,11 +494,10 @@ std::vector<GraphConstruct::CGGraph*> eSSA::find_constraints(Module &m, nbci::Na
 				}
 
     		    	}									
-		} // end BasicBlock::iterator		
-    	    } // end Function::iterator 
+			} // end BasicBlock::iterator		
+		} // end Function::iterator 
 
 		cggraph->constructGraph();	
-
 		toReturn.push_back(cggraph);
 
 	} // end Module::iterator

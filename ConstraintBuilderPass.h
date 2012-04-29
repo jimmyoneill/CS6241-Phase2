@@ -17,6 +17,8 @@ namespace abcd
 {
 	struct ConstraintBuilderPass : public ModulePass
 	{
+	private:
+		int removed;
 	public:
 		static char ID;
 		ConstraintBuilderPass();

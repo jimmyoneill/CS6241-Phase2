@@ -8,7 +8,10 @@ using namespace GraphConstruct;
 
 namespace abcd
 {
-	ConstraintBuilderPass::ConstraintBuilderPass() : ModulePass(ID) {}
+	ConstraintBuilderPass::ConstraintBuilderPass() : ModulePass(ID) 
+	{
+		this->removed = 0;
+	}
 
 	bool ConstraintBuilderPass::runOnModule(Module &M)
 	{
@@ -22,10 +25,11 @@ namespace abcd
 		for (graphIt = graphs.begin(); graphIt != graphs.end(); ++graphIt) 
 		{
 			graph = *graphIt;
-			(*graphIt)->solve(nbci.getBoundsCheckVisitor()->getAllCheckCalls());
+			this->removed += (*graphIt)->solve(nbci.getBoundsCheckVisitor()->getAllCheckCalls());
 		}
 
-		return true;
+		errs() << "Total number of checks removed: " << this->removed << "\n";
+		return this->removed > 0;
 	}
 
 	void ConstraintBuilderPass::getAnalysisUsage(AnalysisUsage &AU) const

@@ -90,7 +90,7 @@ namespace GraphConstruct {
 			void constructGraph(std::vector<CGConstraint*> inputConstraints);
 			void constructGraph();
 			void addArrayLengths(patterns::AccessMap inputMap);
-			void solve(std::vector<CallInst*> arrayChecks);
+			int solve(std::vector<CallInst*> arrayChecks);
 			bool hasNode(std::string inputName);
 			bool doTraverse(std::string firstName, std::string secondName);
 			void continueTraversal(CGTraversal* inputTraversal, CGNode* targetNode);

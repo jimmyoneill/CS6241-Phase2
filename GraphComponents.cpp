@@ -197,7 +197,7 @@ using namespace llvm;
 	* @param boundsChecks - A vector of call instructions that contains all calls to the bounds within the current function
 	* */
 	
-	void CGGraph::solve(std::vector<CallInst*> boundsChecks) {
+	int CGGraph::solve(std::vector<CallInst*> boundsChecks) {
 
 		std::vector<CallInst*>::iterator callIt;
 		std::string varOne;
@@ -259,8 +259,10 @@ using namespace llvm;
 			owner->call_insts_removed.push_back(deadCall);
 		}
 
-		errs() << "Total number of checks performed for function: " << totalChecked << "\n";
-		errs() << "Total number of checks removed for function: " << totalRemoved << "\n";
+		// errs() << "Total number of checks performed for function: " << totalChecked << "\n";
+		// errs() << "Total number of checks removed for function: " << totalRemoved << "\n";
+
+		return totalRemoved;
 
 	}
 	
@@ -606,11 +608,6 @@ using namespace llvm;
 						secondOpNameBr2 = curConstraint->piAssignments2[1]->getAssignedName();
 					}
 	
-					if (D) {
-						errs() << "firstOpNameBr1 = " << firstOpNameBr1 << " secondOpNameBr1 = " << secondOpNameBr1 << "\n";
-						errs() << "firstOpNameBr2 = " << firstOpNameBr2 << " secondOpNameBr2 = " << secondOpNameBr2 << "\n";
-					}
-
 					CGNode* firstNodeBr1 = getNode(firstOpNameBr1);
 					CGNode* secondNodeBr1 = getNode(secondOpNameBr1);
 					CGNode* firstNodeBr2 = getNode(firstOpNameBr2);
