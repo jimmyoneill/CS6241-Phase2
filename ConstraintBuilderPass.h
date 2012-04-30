@@ -19,6 +19,7 @@ namespace abcd
 	{
 	private:
 		int removed;
+        bool pruned;
 	public:
 		static char ID;
 		ConstraintBuilderPass();

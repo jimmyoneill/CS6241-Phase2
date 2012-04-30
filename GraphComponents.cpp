@@ -258,8 +258,8 @@ using namespace llvm;
 			owner->callInstsRemoved.push_back(deadCall);
 		}
 
-		errs() << "Total number of checks performed for function: " << totalChecked << "\n";
-		errs() << "Total number of checks removed for function: " << totalRemoved << "\n";
+		//errs() << "Total number of checks performed for function: " << totalChecked << "\n";
+		//errs() << "Total number of checks removed for function: " << totalRemoved << "\n";
 
 		return totalRemoved;
 

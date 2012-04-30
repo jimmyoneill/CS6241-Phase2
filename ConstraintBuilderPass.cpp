@@ -14,6 +14,7 @@ namespace abcd
 	ConstraintBuilderPass::ConstraintBuilderPass() : ModulePass(ID) 
 	{
 		this->removed = 0;
+        this->pruned = false;
 	}
 
 	bool ConstraintBuilderPass::runOnModule(Module &M)
@@ -24,22 +25,27 @@ namespace abcd
 		ESSATransformPass &essa = getAnalysis<ESSATransformPass>();
 		NaiveBoundsCheckInserter &nbci = getAnalysis<NaiveBoundsCheckInserter>();
         
-        BlockFrequencyPruner *bfp = new BlockFrequencyPruner(M, this);
-        bfp->init();
-        std::vector<BasicBlock*> blocks = bfp->getBlocks();
-
 		vector<CGGraph*> graphs = essa.getTransformedIr()->findConstraints(M, nbci);
 	    vector<CGGraph*>::iterator graphIt;
 		CGGraph* graph;
+        
+        std::vector<BasicBlock*> blocks;
+        if (pruned) {
+            BlockFrequencyPruner *bfp = new BlockFrequencyPruner(M, this, 0.5);
+            bfp->init();
+            blocks = bfp->getBlocks();
+        }
 
 		for (graphIt = graphs.begin(); graphIt != graphs.end(); ++graphIt) 
 		{
 			graph = *graphIt;
-			this->removed += (*graphIt)->solve(nbci.getBoundsCheckVisitor()->getAllCheckCalls());
+            
+            if (pruned) this->removed += (*graphIt)->solve(nbci.getBoundsCheckVisitor()->getCheckCallsInBlocks(blocks));
+			else this->removed += (*graphIt)->solve(nbci.getBoundsCheckVisitor()->getAllCheckCalls());
+            
 
 			totalChecks += (*graphIt)->totalChecked;
-            //this->removed += (*graphIt)->solve(nbci.getBoundsCheckVisitor()->getCheckCallsInBlocks(blocks));
-		}
+        }
 
 		errs() << "Total number of checks: " << totalChecks << "\n";
 		errs() << "Total number of checks removed: " << this->removed << "\n";
@@ -58,7 +64,6 @@ namespace abcd
 }
 
 char abcd::ConstraintBuilderPass::ID = 0;
-
 
 static RegisterPass<abcd::ConstraintBuilderPass> X(
 	"abcd", 

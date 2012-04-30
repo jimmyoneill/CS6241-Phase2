@@ -19,13 +19,28 @@ namespace blockfreq
     class BlockFrequencyPruner {
         
     public:
-        BlockFrequencyPruner(Module &m, ModulePass* owner);
+
+        BlockFrequencyPruner(Module &m, ModulePass* owner, double massThreshold);
         std::vector<BasicBlock*> getBlocks();
         void init();
         
     private:
+        
+        std::vector<BasicBlock*> prunedBlocks;
+        struct freqPredicate {
+            std::map<BasicBlock*, unsigned> freqs;
+            bool operator() (BasicBlock* b1, BasicBlock* b2) {
+                return (freqs[b1] > freqs[b2]);
+            }
+        } _freqPredicate;
+        
+        unsigned freqSum;
+        std::vector<double> getBlockDistribution(std::vector<BasicBlock*> blocks, double freqSum); 
+
         Module *m;
         ModulePass *mp;
+        double massThreshold;
+        unsigned blockCutoff;
     };
     
 }
