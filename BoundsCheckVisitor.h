@@ -32,6 +32,7 @@ namespace patterns
 	    virtual void visitGetElementPtrInst(GetElementPtrInst *inst);
 	    AccessMap getArrayAccessMap();
 	    CheckCalls getAllCheckCalls();
+        CheckCalls getCheckCallsInBlocks(std::vector<BasicBlock*> blocks);
 	    int getNumEliminatedChecks();
 	    BoundsCheckCodeGenerator *getCodeGenerator();
 

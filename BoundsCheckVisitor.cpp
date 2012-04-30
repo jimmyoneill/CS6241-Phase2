@@ -62,6 +62,25 @@ namespace patterns
 	{
 		return this->checkCalls;
 	}
+    
+    CheckCalls BoundsCheckVisitor::getCheckCallsInBlocks(std::vector<BasicBlock*> blocks)
+    {
+        CheckCalls filteredCalls;
+        std::vector<BasicBlock*>::iterator it;
+        for (it = blocks.begin(); it < blocks.end(); ++it) {
+            BasicBlock *bb = *it;
+            for (BasicBlock::iterator i = bb->begin(); i != bb->end(); i++) {
+                if (isa<CallInst>(i)) {
+                    CheckCalls::iterator callIt;
+                    callIt = std::find(checkCalls.begin(), checkCalls.end(), i);
+                    if (callIt != checkCalls.end()) {
+                        filteredCalls.push_back(*callIt);
+                    }
+                }
+            }	    
+        }
+        return filteredCalls;
+    }
 
 	bool BoundsCheckVisitor::insertedChecks()
 	{

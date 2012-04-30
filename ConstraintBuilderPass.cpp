@@ -2,10 +2,12 @@
 #include "NaiveBoundsCheckInserter.h"
 #include "ESSATransformPass.h"
 #include "llvm/Analysis/BlockFrequencyInfo.h"
+#include "BlockFrequencyPruner.h"
 
 using namespace nbci;
 using namespace std;
 using namespace GraphConstruct;
+using namespace blockfreq;
 
 namespace abcd
 {
@@ -17,29 +19,14 @@ namespace abcd
 	bool ConstraintBuilderPass::runOnModule(Module &M)
 	{
         
-        /*
-        errs() << "test1\n";
-        
-        for (Module::iterator f = M.begin(); f != M.end(); f++) {
-            if (!(*f).isDeclaration()) { 
-            BlockFrequencyInfo &bfi = getAnalysis<BlockFrequencyInfo>(*f);
-                
-            for (Function::iterator b = f->begin(); b != f->end(); b++) {
-                errs() << "test1\n";
-                errs() << "bfi = " << &bfi;
-                BlockFrequency bf = bfi.getBlockFreq( (BasicBlock*)b );
-                errs() << "test2\n";
-                unsigned freq = bfi.getBlockFreq( (BasicBlock*)b ).getFrequency();
-                errs() << "test3\n";
-                errs() << "basic block " << b->getName() << " has freq " << freq << "\n";
-            }	    
-            }
-        }
-        */
-	int totalChecks = 0;
+        int totalChecks = 0;
         
 		ESSATransformPass &essa = getAnalysis<ESSATransformPass>();
 		NaiveBoundsCheckInserter &nbci = getAnalysis<NaiveBoundsCheckInserter>();
+        
+        BlockFrequencyPruner *bfp = new BlockFrequencyPruner(M, this);
+        bfp->init();
+        std::vector<BasicBlock*> blocks = bfp->getBlocks();
 
 		vector<CGGraph*> graphs = essa.getTransformedIr()->findConstraints(M, nbci);
 	    vector<CGGraph*>::iterator graphIt;
@@ -49,7 +36,9 @@ namespace abcd
 		{
 			graph = *graphIt;
 			this->removed += (*graphIt)->solve(nbci.getBoundsCheckVisitor()->getAllCheckCalls());
+
 			totalChecks += (*graphIt)->totalChecked;
+            //this->removed += (*graphIt)->solve(nbci.getBoundsCheckVisitor()->getCheckCallsInBlocks(blocks));
 		}
 
 		errs() << "Total number of checks: " << totalChecks << "\n";
@@ -63,8 +52,8 @@ namespace abcd
         AU.setPreservesCFG();
 		AU.addRequired<ESSATransformPass>();
 		AU.addRequired<NaiveBoundsCheckInserter>();
-        //AU.addRequired<BlockFrequencyInfo>();
-        //AU.addPreserved<BlockFrequencyInfo>();
+        AU.addRequired<BlockFrequencyInfo>();
+        AU.addPreserved<BlockFrequencyInfo>();
     }
 }
 
