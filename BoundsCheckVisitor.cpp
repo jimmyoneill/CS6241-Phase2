@@ -29,29 +29,29 @@ namespace patterns
 		}
 	}
 
-	void BoundsCheckVisitor::visitBasicBlock(BasicBlock *blk)
-	{
-		// call super class's visit
-		InstructionVisitor::visitBasicBlock(blk);
+	// void BoundsCheckVisitor::visitBasicBlock(BasicBlock *blk)
+	// {
+	// 	// call super class's visit
+	// 	InstructionVisitor::visitBasicBlock(blk);
 
-		// Eliminate some redundant checks from that block.
-		if(REDUNDANT_CHECK_ELIMINATION)
-		{
-			vector<CallInst*> redundantChks;
-			RedundantCheckEliminator::getRedundantCheckCalls(blk, this->accessMap, redundantChks);
+	// 	// Eliminate some redundant checks from that block.
+	// 	if(REDUNDANT_CHECK_ELIMINATION)
+	// 	{
+	// 		vector<CallInst*> redundantChks;
+	// 		RedundantCheckEliminator::getRedundantCheckCalls(blk, this->accessMap, redundantChks);
 
-			if(redundantChks.size() > 0)
-			{
-				this->eliminatedChecks += redundantChks.size();
-				for(vector<CallInst*>::iterator i = redundantChks.begin(); i != redundantChks.end(); i++)
-				{
-					this->checkCalls.erase(remove(this->checkCalls.begin(), this->checkCalls.end(), *i));
-					this->accessMap.erase(*i);
-					(*i)->eraseFromParent();
-				}
-			}
-		}
-	}
+	// 		if(redundantChks.size() > 0)
+	// 		{
+	// 			this->eliminatedChecks += redundantChks.size();
+	// 			for(vector<CallInst*>::iterator i = redundantChks.begin(); i != redundantChks.end(); i++)
+	// 			{
+	// 				this->checkCalls.erase(remove(this->checkCalls.begin(), this->checkCalls.end(), *i));
+	// 				this->accessMap.erase(*i);
+	// 				(*i)->eraseFromParent();
+	// 			}
+	// 		}
+	// 	}
+	// }
 
 	AccessMap BoundsCheckVisitor::getArrayAccessMap()
 	{

@@ -28,7 +28,7 @@ namespace patterns
 	public:
 	    BoundsCheckVisitor(BoundsCheckCodeGenerator *codeGen);
 	    bool insertedChecks();
-	    virtual void visitBasicBlock(BasicBlock *blk);
+	    //virtual void visitBasicBlock(BasicBlock *blk);
 	    virtual void visitGetElementPtrInst(GetElementPtrInst *inst);
 	    AccessMap getArrayAccessMap();
 	    CheckCalls getAllCheckCalls();
